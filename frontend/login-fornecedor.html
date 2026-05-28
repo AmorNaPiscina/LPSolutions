@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Fornecedor - Sistema de Agendamento</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <h2>🔐 Login Fornecedor</h2>
+      
+      <div id="mensagem-container"></div>
+      
+      <form id="form-login">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="email" placeholder="seu@email.com" required />
+        </div>
+        
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="senha" placeholder="******" required />
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">
+          Entrar
+        </button>
+        
+        <button type="button" class="link-button" style="width: 100%;" onclick="window.location.href='cadastro-fornecedor.html'">
+          Não tenho conta - Criar Conta
+        </button>
+        
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="window.location.href='index.html'">
+          Voltar
+        </button>
+      </form>
+    </div>
+  </div>
+  
+  <script src="js/config.js"></script>
+  <script src="js/login-fornecedor.js"></script>
+</body>
+</html>
