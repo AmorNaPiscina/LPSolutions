@@ -3,7 +3,7 @@
 // ===========================================
 
 const CONFIG = {
-  API_URL: 'http://localhost:3000',
+  API_URL: 'https://lpsolutions-89zx.onrender.com',
   
   // Chaves do localStorage
   STORAGE_KEYS: {
