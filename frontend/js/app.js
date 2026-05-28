@@ -3,7 +3,7 @@
 // ===========================================
 
 const { useState, useEffect } = React;
-const API_URL = 'http://localhost:3000';
+const API_URL = 'https://lpsolutions-89zx.onrender.com';
 
 // ===========================================
 // COMPONENTE PRINCIPAL
