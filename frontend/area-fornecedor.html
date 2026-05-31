@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minha Conta - AgendaMercado</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="header">
+    <h1>AgendaMercado</h1>
+    <div class="header-right">
+      <div class="user-info">
+        <span id="nome-fornecedor">Carregando...</span>
+      </div>
+      <button class="dark-toggle" onclick="toggleDarkMode()" title="Modo noturno">
+        🌙
+      </button>
+      <button class="btn btn-danger" onclick="logout('fornecedor')" style="width: auto; padding: 8px 16px;">
+        Sair
+      </button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="msg"></div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-size: 18px; font-weight: 600;">Meus Agendamentos</h2>
+        <button class="btn btn-primary" onclick="toggleForm()" style="width: auto; padding: 10px 24px;">
+          + Novo
+        </button>
+      </div>
+
+      <div id="form-agend" style="display: none; background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
+        <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: 600;">Novo Agendamento</h3>
+
+        <form onsubmit="criarAgendamento(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Data</label>
+              <input type="date" id="data" required />
+            </div>
+            <div class="form-group">
+              <label>Tipo de Mercadoria</label>
+              <input type="text" id="tipo" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hora Início</label>
+              <input type="time" id="horaini" required />
+            </div>
+            <div class="form-group">
+              <label>Duração (min)</label>
+              <input type="number" id="tempo" min="15" step="15" value="30" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hora Fim</label>
+              <input type="time" id="horafim" readonly />
+            </div>
+            <div class="form-group">
+              <label>Volume</label>
+              <select id="volume" required>
+                <option value="Pequeno">Pequeno</option>
+                <option value="Médio" selected>Médio</option>
+                <option value="Grande">Grande</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Observações</label>
+            <textarea id="obs" rows="3"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Agendar</button>
+        </form>
+      </div>
+
+      <div id="lista"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    let fornecedor = null;
+    let agendamentos = [];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fornecedor = verificarLoginFornecedor();
+      if (fornecedor) {
+        document.getElementById('nome-fornecedor').textContent = fornecedor.nome_empresa;
+        document.getElementById('data').min = new Date().toISOString().split('T')[0];
+        carregarAgendamentos();
+        configurarCalculo();
+      }
+    });
+
+    function toggleForm() {
+      const form = document.getElementById('form-agend');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function configurarCalculo() {
+      const calc = () => {
+        const inicio = document.getElementById('horaini').value;
+        const tempo = document.getElementById('tempo').value;
+        if (inicio && tempo) {
+          const [h, m] = inicio.split(':').map(Number);
+          const total = h * 60 + m + parseInt(tempo);
+          document.getElementById('horafim').value = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+        }
+      };
+      document.getElementById('horaini').addEventListener('change', calc);
+      document.getElementById('tempo').addEventListener('input', calc);
+
+      // Validar horário bloqueado
+      document.getElementById('data').addEventListener('change', validarBloqueio);
+      document.getElementById('horaini').addEventListener('change', validarBloqueio);
+      document.getElementById('horafim').addEventListener('change', validarBloqueio);
+    }
+
+    function validarBloqueio() {
+      const data = document.getElementById('data').value;
+      const horaini = document.getElementById('horaini').value;
+      const horafim = document.getElementById('horafim').value;
+
+      if (data && horaini && horafim) {
+        const validacao = validarHorarioBloqueado(data, horaini, horafim);
+        if (validacao.bloqueado) {
+          mostrarErro('msg', `❌ Horário bloqueado: ${validacao.motivo} (${validacao.periodo}) - ${obterDiaSemana(data).toUpperCase()}`);
+        } else {
+          document.getElementById('msg').innerHTML = '';
+        }
+      }
+    }
+
+    async function carregarAgendamentos() {
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/fornecedor/${fornecedor.id}/agendamentos`);
+        agendamentos = await res.json();
+        renderizar();
+      } catch (err) {
+        console.error('Erro:', err);
+      }
+    }
+
+    function renderizar() {
+      const pendentes = agendamentos.filter(a => a.status === 'Pendente').length;
+      const aprovados = agendamentos.filter(a => a.status === 'Aprovado').length;
+      const recusados = agendamentos.filter(a => a.status === 'Recusado').length;
+
+      document.getElementById('stats').innerHTML = `
+        <div class="stat-card"><h3>${pendentes}</h3><p>Pendentes</p></div>
+        <div class="stat-card"><h3>${aprovados}</h3><p>Aprovados</p></div>
+        <div class="stat-card"><h3>${recusados}</h3><p>Recusados</p></div>
+        <div class="stat-card"><h3>${agendamentos.length}</h3><p>Total</p></div>
+      `;
+
+      let lista = '';
+      const pend = agendamentos.filter(a => a.status === 'Pendente');
+      const apr = agendamentos.filter(a => a.status === 'Aprovado');
+
+      if (pend.length > 0) {
+        lista += '<h3 style="color: var(--primary); margin-bottom: 12px; font-weight: 600;">Pendentes</h3>';
+        pend.forEach(ag => {
+          lista += `<div style="background: #fef3c7; padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--warning);"><h4>${ag.tipo_mercadoria}</h4><p style="font-size: 13px; color: #92400e;">${formatarData(ag.data_entrega)} às ${ag.horario_inicio}</p></div>`;
+        });
+      }
+      if (apr.length > 0) {
+        lista += '<h3 style="color: var(--success); margin-top: 16px; margin-bottom: 12px; font-weight: 600;">Aprovados</h3>';
+        apr.forEach(ag => {
+          lista += `<div style="background: #dcfce7; padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--success);"><h4>${ag.tipo_mercadoria}</h4><p style="font-size: 13px; color: #166534;">${formatarData(ag.data_entrega)} às ${ag.horario_inicio}</p></div>`;
+        });
+      }
+
+      document.getElementById('lista').innerHTML = lista || '<p style="text-align: center; color: #6b7280; padding: 20px;">Sem agendamentos</p>';
+    }
+
+    async function criarAgendamento(e) {
+      e.preventDefault();
+
+      const data = document.getElementById('data').value;
+      const inicio = document.getElementById('horaini').value;
+      const tempo = document.getElementById('tempo').value;
+      const [h, m] = inicio.split(':').map(Number);
+      const totalMin = h * 60 + m + parseInt(tempo);
+      const fim = `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
+
+      // Validar se horário está bloqueado
+      const validacao = validarHorarioBloqueado(data, inicio, fim);
+      if (validacao.bloqueado) {
+        mostrarErro('msg', `❌ Não é possível agendar: ${validacao.motivo} (${validacao.periodo})`);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/agendamentos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fornecedor_id: fornecedor.id,
+            data_entrega: data,
+            horario_inicio: inicio,
+            horario_fim: fim,
+            tipo_mercadoria: document.getElementById('tipo').value,
+            volume: document.getElementById('volume').value,
+            tempo_estimado: parseInt(tempo),
+            observacoes: document.getElementById('obs').value
+          })
+        });
+
+        if (res.ok) {
+          mostrarSucesso('msg', 'Agendamento criado!');
+          document.getElementById('form-agend').reset();
+          toggleForm();
+          carregarAgendamentos();
+        }
+      } catch (err) {
+        mostrarErro('msg', 'Erro ao criar agendamento');
+      }
+    }
+  </script>
+</body>
+</html>
