@@ -1,7 +1,6 @@
 // ===========================
-// CONFIGURAÇÕES GLOBAIS
+// CONFIGURAÇÕES
 // ===========================
-
 const CONFIG = {
   API_URL: 'https://lpsolutions-89zx.onrender.com',
   STORAGE: {
@@ -12,9 +11,8 @@ const CONFIG = {
 };
 
 // ===========================
-// FUNÇÕES UTILITÁRIAS
+// STORAGE
 // ===========================
-
 function salvarDados(chave, dados) {
   localStorage.setItem(chave, JSON.stringify(dados));
 }
@@ -28,20 +26,27 @@ function limparDados(chave) {
   localStorage.removeItem(chave);
 }
 
+// ===========================
+// FORMATAÇÃO
+// ===========================
 function formatarData(dataString) {
   const data = new Date(dataString + 'T00:00:00');
   return data.toLocaleDateString('pt-BR');
 }
 
+function obterDiaSemana(data) {
+  const dias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const dataObj = new Date(data + 'T00:00:00');
+  return dias[dataObj.getDay()];
+}
+
 // ===========================
 // VALIDAÇÃO DE HORÁRIOS BLOQUEADOS
 // ===========================
-
 function validarHorarioBloqueado(data, horaInicio, horaFim) {
   const dataObj = new Date(data + 'T00:00:00');
-  const diaSemana = dataObj.getDay(); // 0=domingo, 1=segunda, 2=terça...
+  const diaSemana = dataObj.getDay();
   
-  // REGRA: Segunda (1) e Quinta (4) das 10:00 às 12:00
   const horasSegundaQuinta = [
     { diaSemana: 1, inicio: '10:00', fim: '12:00', motivo: 'Coleta no Ceasa' },
     { diaSemana: 4, inicio: '10:00', fim: '12:00', motivo: 'Coleta no Ceasa' }
@@ -49,7 +54,6 @@ function validarHorarioBloqueado(data, horaInicio, horaFim) {
 
   for (const bloqueio of horasSegundaQuinta) {
     if (diaSemana === bloqueio.diaSemana) {
-      // Converter horas para minutos
       const [h1, m1] = horaInicio.split(':').map(Number);
       const [h2, m2] = horaFim.split(':').map(Number);
       const [hBloqueio1, mBloqueio1] = bloqueio.inicio.split(':').map(Number);
@@ -60,7 +64,6 @@ function validarHorarioBloqueado(data, horaInicio, horaFim) {
       const bloqueioInicioMin = hBloqueio1 * 60 + mBloqueio1;
       const bloqueioFimMin = hBloqueio2 * 60 + mBloqueio2;
 
-      // Verificar se há sobreposição
       if (!(fimMin <= bloqueioInicioMin || inicioMin >= bloqueioFimMin)) {
         return {
           bloqueado: true,
@@ -74,12 +77,9 @@ function validarHorarioBloqueado(data, horaInicio, horaFim) {
   return { bloqueado: false };
 }
 
-function obterDiaSemana(data) {
-  const dias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-  const dataObj = new Date(data + 'T00:00:00');
-  return dias[dataObj.getDay()];
-}
-
+// ===========================
+// VERIFICAÇÃO DE LOGIN
+// ===========================
 function verificarLoginFornecedor() {
   const fornecedor = buscarDados(CONFIG.STORAGE.FORNECEDOR);
   if (!fornecedor) {
@@ -98,6 +98,9 @@ function verificarLoginRecebedor() {
   return recebedor;
 }
 
+// ===========================
+// LOGOUT
+// ===========================
 function logout(tipo) {
   if (confirm('Deseja realmente sair?')) {
     const chave = tipo === 'fornecedor' ? CONFIG.STORAGE.FORNECEDOR : CONFIG.STORAGE.RECEBEDOR;
@@ -106,6 +109,9 @@ function logout(tipo) {
   }
 }
 
+// ===========================
+// DARK MODE
+// ===========================
 function toggleDarkMode() {
   const darkMode = !JSON.parse(localStorage.getItem(CONFIG.STORAGE.DARK_MODE) || 'false');
   localStorage.setItem(CONFIG.STORAGE.DARK_MODE, darkMode);
@@ -119,13 +125,11 @@ function carregarDarkMode() {
   }
 }
 
-// Carregar dark mode ao iniciar página
 window.addEventListener('DOMContentLoaded', carregarDarkMode);
 
 // ===========================
-// FUNÇÕES DE MENSAGEM
+// MENSAGENS
 // ===========================
-
 function mostrarMensagem(id, tipo, mensagem) {
   const container = document.getElementById(id);
   if (container) {
