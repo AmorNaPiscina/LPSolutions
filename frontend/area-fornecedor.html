@@ -28,10 +28,8 @@
         <button class="btn btn-primary" onclick="toggleForm()" style="width: auto; padding: 10px 24px;">+ Novo</button>
       </div>
 
-      <div id="form-agend" style="display: none; background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
+      <form id="form-agend" onsubmit="criarAgendamento(event)" style="display: none; background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
         <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: 600;">Novo Agendamento</h3>
-
-        <form onsubmit="criarAgendamento(event)">
           <div class="form-row">
             <div class="form-group">
               <label>Data</label>
@@ -76,7 +74,6 @@
 
           <button type="submit" class="btn btn-primary">Agendar</button>
         </form>
-      </div>
 
       <div id="lista"></div>
     </div>
