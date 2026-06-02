@@ -399,6 +399,78 @@ app.post('/api/auth/admin/login', async (req, res) => {
   }
 });
 
+// Alterar senha fornecedor
+app.put('/api/auth/fornecedor/alterar-senha', async (req, res) => {
+  try {
+    const { fornecedor_id, senha_atual, nova_senha } = req.body;
+
+    if (!fornecedor_id || !senha_atual || !nova_senha) {
+      return res.status(400).json({ erro: 'Campos obrigatórios' });
+    }
+    if (nova_senha.length < 8) {
+      return res.status(400).json({ erro: 'Nova senha deve ter no mínimo 8 caracteres' });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM contas_fornecedores WHERE fornecedor_id = $1 AND ativo = true',
+      [fornecedor_id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ erro: 'Conta não encontrada' });
+
+    const conta = result.rows[0];
+    const senhaValida = await bcrypt.compare(senha_atual, conta.senha);
+    if (!senhaValida) return res.status(401).json({ erro: 'Senha atual incorreta' });
+
+    const novaHash = await bcrypt.hash(nova_senha, 10);
+    await pool.query(
+      'UPDATE contas_fornecedores SET senha = $1 WHERE id = $2',
+      [novaHash, conta.id]
+    );
+
+    console.log('✅ Senha alterada - fornecedor:', fornecedor_id);
+    res.json({ mensagem: 'Senha alterada com sucesso' });
+  } catch (err) {
+    console.error('❌ Erro ao alterar senha fornecedor:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Alterar senha admin
+app.put('/api/auth/admin/alterar-senha', async (req, res) => {
+  try {
+    const { email, senha_atual, nova_senha } = req.body;
+
+    if (!email || !senha_atual || !nova_senha) {
+      return res.status(400).json({ erro: 'Campos obrigatórios' });
+    }
+    if (nova_senha.length < 8) {
+      return res.status(400).json({ erro: 'Nova senha deve ter no mínimo 8 caracteres' });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM usuarios WHERE email = $1 AND tipo = $2',
+      [email, 'admin']
+    );
+    if (result.rows.length === 0) return res.status(404).json({ erro: 'Conta não encontrada' });
+
+    const usuario = result.rows[0];
+    const senhaValida = await bcrypt.compare(senha_atual, usuario.senha);
+    if (!senhaValida) return res.status(401).json({ erro: 'Senha atual incorreta' });
+
+    const novaHash = await bcrypt.hash(nova_senha, 10);
+    await pool.query(
+      'UPDATE usuarios SET senha = $1 WHERE id = $2',
+      [novaHash, usuario.id]
+    );
+
+    console.log('✅ Senha alterada - admin:', email);
+    res.json({ mensagem: 'Senha alterada com sucesso' });
+  } catch (err) {
+    console.error('❌ Erro ao alterar senha admin:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // ===========================
 // INICIAR
 // ===========================
