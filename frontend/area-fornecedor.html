@@ -5,6 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minha Conta - AgendaMercado</title>
   <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .status-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .badge-pendente  { background: #fef3c7; color: #92400e; }
+    .badge-aprovado  { background: #dcfce7; color: #166534; }
+    .badge-recusado  { background: #fee2e2; color: #7f1d1d; }
+    .btn-warning {
+      background: #d97706;
+      color: white;
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+    .btn-warning:hover { background: #b45309; }
+    .ag-card {
+      padding: 14px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border-left: 3px solid;
+    }
+    .ag-card-pendente { background: #fffbeb; border-left-color: var(--warning); }
+    .ag-card-aprovado { background: #f0fdf4; border-left-color: var(--success); }
+    .ag-card-recusado { background: #fff1f2; border-left-color: var(--danger); }
+    .reagendar-form {
+      display: none;
+      margin-top: 12px;
+      background: white;
+      padding: 12px;
+      border-radius: 4px;
+      border: 1px solid #fcd34d;
+    }
+    .reagendar-form label {
+      font-size: 11px;
+      color: #6b7280;
+      display: block;
+      margin-bottom: 3px;
+    }
+    .reagendar-form input {
+      padding: 6px 8px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      font-size: 13px;
+      width: 100%;
+    }
+    .reagendar-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr 80px;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 480px) {
+      .reagendar-fields { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
 </head>
 <body>
   <div class="header">
@@ -30,50 +89,60 @@
 
       <form id="form-agend" onsubmit="criarAgendamento(event)" style="display: none; background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
         <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: 600;">Novo Agendamento</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Data</label>
-              <input type="date" id="data" required />
-            </div>
-            <div class="form-group">
-              <label>Tipo de Mercadoria</label>
-              <input type="text" id="tipo" required />
-            </div>
-          </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Hora Início</label>
-              <input type="time" id="horaini" required />
-            </div>
-            <div class="form-group">
-              <label>Duração (min)</label>
-              <input type="number" id="tempo" min="15" step="15" value="30" required />
-            </div>
-          </div>
+        <div class="alert alert-info">
+          <strong>⚠️ Horários Bloqueados:</strong><br/>
+          Segundas e Quintas: 10:00 - 12:00 (Coleta no Ceasa)
+        </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Hora Fim</label>
-              <input type="time" id="horafim" readonly />
-            </div>
-            <div class="form-group">
-              <label>Volume</label>
-              <select id="volume" required>
-                <option value="Pequeno">Pequeno</option>
-                <option value="Médio" selected>Médio</option>
-                <option value="Grande">Grande</option>
-              </select>
-            </div>
-          </div>
-
+        <div class="form-row" style="margin-top:16px;">
           <div class="form-group">
-            <label>Observações</label>
-            <textarea id="obs" rows="3"></textarea>
+            <label>Data</label>
+            <input type="date" id="data" required />
           </div>
+          <div class="form-group">
+            <label>Tipo de Mercadoria</label>
+            <input type="text" id="tipo" required />
+          </div>
+        </div>
 
-          <button type="submit" class="btn btn-primary">Agendar</button>
-        </form>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Hora Início</label>
+            <input type="time" id="horaini" required />
+          </div>
+          <div class="form-group">
+            <label>Duração (min)</label>
+            <input type="number" id="tempo" min="15" step="15" value="30" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Hora Fim</label>
+            <input type="time" id="horafim" readonly />
+          </div>
+          <div class="form-group">
+            <label>Volume</label>
+            <select id="volume" required>
+              <option value="Pequeno">Pequeno</option>
+              <option value="Médio" selected>Médio</option>
+              <option value="Grande">Grande</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Observações</label>
+          <textarea id="obs" rows="3"></textarea>
+        </div>
+
+        <div id="msg-form"></div>
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;">Agendar</button>
+          <button type="button" class="btn btn-secondary" onclick="toggleForm()" style="flex:1;">Cancelar</button>
+        </div>
+      </form>
 
       <div id="lista"></div>
     </div>
@@ -96,7 +165,12 @@
 
     function toggleForm() {
       const form = document.getElementById('form-agend');
-      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+      form.style.display = form.style.display === 'none' || form.style.display === '' ? 'block' : 'none';
+      if (form.style.display === 'none') {
+        form.reset();
+        document.getElementById('horafim').value = '';
+        document.getElementById('msg-form').innerHTML = '';
+      }
     }
 
     function configurarCalculo() {
@@ -106,26 +180,26 @@
         if (inicio && tempo) {
           const [h, m] = inicio.split(':').map(Number);
           const total = h * 60 + m + parseInt(tempo);
-          document.getElementById('horafim').value = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+          document.getElementById('horafim').value =
+            `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
         }
+        validarBloqueio();
       };
       document.getElementById('horaini').addEventListener('change', calc);
       document.getElementById('tempo').addEventListener('input', calc);
       document.getElementById('data').addEventListener('change', validarBloqueio);
-      document.getElementById('horaini').addEventListener('change', validarBloqueio);
     }
 
     function validarBloqueio() {
       const data = document.getElementById('data').value;
       const horaini = document.getElementById('horaini').value;
       const horafim = document.getElementById('horafim').value;
-
       if (data && horaini && horafim) {
-        const validacao = validarHorarioBloqueado(data, horaini, horafim);
-        if (validacao.bloqueado) {
-          mostrarErro('msg', `❌ Horário bloqueado: ${validacao.motivo} (${validacao.periodo})`);
+        const v = validarHorarioBloqueado(data, horaini, horafim);
+        if (v.bloqueado) {
+          mostrarErro('msg-form', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`);
         } else {
-          document.getElementById('msg').innerHTML = '';
+          document.getElementById('msg-form').innerHTML = '';
         }
       }
     }
@@ -133,11 +207,12 @@
     async function carregarAgendamentos() {
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/fornecedor/${fornecedor.id}/agendamentos`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         agendamentos = await res.json();
         renderizar();
       } catch (err) {
         console.error('Erro:', err);
-        mostrarErro('msg', 'Erro ao carregar agendamentos');
+        mostrarErro('msg', 'Erro ao carregar agendamentos. O servidor pode estar iniciando — tente novamente.');
       }
     }
 
@@ -153,24 +228,146 @@
         <div class="stat-card"><h3>${agendamentos.length}</h3><p>Total</p></div>
       `;
 
-      let lista = '';
+      const hoje = new Date().toISOString().split('T')[0];
       const pend = agendamentos.filter(a => a.status === 'Pendente');
-      const apr = agendamentos.filter(a => a.status === 'Aprovado');
+      const apr  = agendamentos.filter(a => a.status === 'Aprovado');
+      const rec  = agendamentos.filter(a => a.status === 'Recusado');
+
+      let lista = '';
 
       if (pend.length > 0) {
-        lista += '<h3 style="color: var(--primary); margin-bottom: 12px; font-weight: 600;">Pendentes</h3>';
-        pend.forEach(ag => {
-          lista += `<div style="background: #fef3c7; padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--warning);"><h4>${ag.tipo_mercadoria}</h4><p style="font-size: 13px; color: #92400e;">${formatarData(ag.data_entrega)} às ${ag.horario_inicio}</p></div>`;
-        });
-      }
-      if (apr.length > 0) {
-        lista += '<h3 style="color: var(--success); margin-top: 16px; margin-bottom: 12px; font-weight: 600;">Aprovados</h3>';
-        apr.forEach(ag => {
-          lista += `<div style="background: #dcfce7; padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--success);"><h4>${ag.tipo_mercadoria}</h4><p style="font-size: 13px; color: #166534;">${formatarData(ag.data_entrega)} às ${ag.horario_inicio}</p></div>`;
-        });
+        lista += '<h3 style="color:var(--warning);margin-bottom:12px;font-weight:600;">⏳ Pendentes</h3>';
+        pend.forEach(ag => { lista += cardFornecedor(ag, hoje); });
       }
 
-      document.getElementById('lista').innerHTML = lista || '<p style="text-align: center; color: #6b7280; padding: 20px;">Sem agendamentos</p>';
+      if (apr.length > 0) {
+        lista += '<h3 style="color:var(--success);margin-top:20px;margin-bottom:12px;font-weight:600;">✅ Aprovados</h3>';
+        apr.forEach(ag => { lista += cardFornecedor(ag, hoje); });
+      }
+
+      if (rec.length > 0) {
+        lista += '<h3 style="color:var(--danger);margin-top:20px;margin-bottom:12px;font-weight:600;">❌ Recusados</h3>';
+        rec.forEach(ag => { lista += cardFornecedor(ag, hoje); });
+      }
+
+      document.getElementById('lista').innerHTML = lista ||
+        '<p style="text-align:center;color:#6b7280;padding:20px;">Sem agendamentos futuros</p>';
+    }
+
+    function cardFornecedor(ag, hoje) {
+      const cssClass = `ag-card ag-card-${ag.status.toLowerCase()}`;
+
+      let botoes = '';
+      if (ag.status === 'Pendente') {
+        botoes = `
+          <button class="btn btn-warning" onclick="toggleReagendar(${ag.id})" style="width:auto;font-size:12px;padding:6px 12px;">Reagendar</button>
+          <button class="btn btn-danger" onclick="cancelarAgendamento(${ag.id})" style="width:auto;font-size:12px;padding:6px 12px;">Cancelar</button>
+        `;
+      } else if (ag.status === 'Recusado') {
+        botoes = `
+          <button class="btn btn-warning" onclick="toggleReagendar(${ag.id})" style="width:auto;font-size:12px;padding:6px 12px;">Reagendar</button>
+        `;
+      }
+
+      const reagendarForm = (ag.status === 'Pendente' || ag.status === 'Recusado') ? `
+        <div class="reagendar-form" id="reagendar-${ag.id}">
+          <p style="font-size:12px;font-weight:600;margin-bottom:10px;color:#92400e;">⚡ Propor novo horário (voltará para análise):</p>
+          <div class="reagendar-fields">
+            <div>
+              <label>Data</label>
+              <input type="date" id="rd-data-${ag.id}" min="${hoje}" />
+            </div>
+            <div>
+              <label>Hora Início</label>
+              <input type="time" id="rd-hora-${ag.id}" />
+            </div>
+            <div>
+              <label>Duração (min)</label>
+              <input type="number" id="rd-tempo-${ag.id}" min="15" step="15" value="${ag.tempo_estimado || 30}" />
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="reagendar(${ag.id})" class="btn btn-warning" style="width:auto;font-size:13px;padding:6px 14px;">Confirmar</button>
+            <button onclick="toggleReagendar(${ag.id})" class="btn btn-secondary" style="width:auto;font-size:13px;padding:6px 14px;">Cancelar</button>
+          </div>
+        </div>
+      ` : '';
+
+      return `
+        <div class="${cssClass}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+            <div>
+              <h4 style="font-weight:600;margin-bottom:4px;">${ag.tipo_mercadoria}</h4>
+              <p style="font-size:13px;color:#6b7280;">${formatarData(ag.data_entrega)} &nbsp;·&nbsp; ${ag.horario_inicio} - ${ag.horario_fim}</p>
+              <p style="font-size:13px;color:#6b7280;margin-top:2px;">Volume: ${ag.volume}</p>
+              ${ag.observacoes ? `<p style="font-size:12px;color:#9ca3af;margin-top:4px;">${ag.observacoes}</p>` : ''}
+            </div>
+            <span class="status-badge badge-${ag.status.toLowerCase()}">${ag.status}</span>
+          </div>
+          ${botoes ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${botoes}</div>` : ''}
+          ${reagendarForm}
+        </div>
+      `;
+    }
+
+    function toggleReagendar(id) {
+      const el = document.getElementById(`reagendar-${id}`);
+      el.style.display = el.style.display === 'none' || el.style.display === '' ? 'block' : 'none';
+    }
+
+    async function reagendar(id) {
+      const data = document.getElementById(`rd-data-${id}`).value;
+      const hora = document.getElementById(`rd-hora-${id}`).value;
+      const tempo = parseInt(document.getElementById(`rd-tempo-${id}`).value);
+
+      if (!data || !hora || !tempo) {
+        mostrarErro('msg', 'Preencha data, hora início e duração para reagendar.');
+        return;
+      }
+
+      const [h, m] = hora.split(':').map(Number);
+      const total = h * 60 + m + tempo;
+      const fim = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+
+      const v = validarHorarioBloqueado(data, hora, fim);
+      if (v.bloqueado) {
+        mostrarErro('msg', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/reagendar`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data_entrega: data, horario_inicio: hora, horario_fim: fim, tempo_estimado: tempo })
+        });
+        const resultado = await res.json();
+        if (res.ok) {
+          mostrarSucesso('msg', 'Reagendado! Aguardando nova aprovação.');
+          carregarAgendamentos();
+        } else {
+          mostrarErro('msg', resultado.erro || 'Erro ao reagendar');
+        }
+      } catch (err) {
+        mostrarErro('msg', 'Erro de conexão ao reagendar');
+      }
+    }
+
+    async function cancelarAgendamento(id) {
+      if (confirm('Cancelar este agendamento?')) {
+        try {
+          const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            mostrarSucesso('msg', 'Agendamento cancelado.');
+            carregarAgendamentos();
+          } else {
+            const resultado = await res.json();
+            mostrarErro('msg', resultado.erro || 'Erro ao cancelar');
+          }
+        } catch (err) {
+          mostrarErro('msg', 'Erro de conexão ao cancelar');
+        }
+      }
     }
 
     async function criarAgendamento(e) {
@@ -178,8 +375,8 @@
 
       const data = document.getElementById('data').value;
       const inicio = document.getElementById('horaini').value;
-      const tipo = document.getElementById('tipo').value;
       const tempo = document.getElementById('tempo').value;
+      const tipo = document.getElementById('tipo').value;
       const volume = document.getElementById('volume').value;
       const obs = document.getElementById('obs').value;
 
@@ -187,9 +384,9 @@
       const totalMin = h * 60 + m + parseInt(tempo);
       const fim = `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
 
-      const validacao = validarHorarioBloqueado(data, inicio, fim);
-      if (validacao.bloqueado) {
-        mostrarErro('msg', `❌ Não é possível agendar: ${validacao.motivo}`);
+      const v = validarHorarioBloqueado(data, inicio, fim);
+      if (v.bloqueado) {
+        mostrarErro('msg-form', `❌ Não é possível agendar: ${v.motivo} (${v.periodo})`);
         return;
       }
 
@@ -211,19 +408,16 @@
         });
 
         const resultado = await res.json();
-
         if (res.ok) {
-          mostrarSucesso('msg', 'Agendamento criado com sucesso!');
-          document.getElementById('form-agend').reset();
-          document.getElementById('horafim').value = '';
+          mostrarSucesso('msg', 'Agendamento solicitado! Aguardando aprovação.');
           toggleForm();
-          setTimeout(() => carregarAgendamentos(), 1500);
+          setTimeout(() => carregarAgendamentos(), 1000);
         } else {
-          mostrarErro('msg', resultado.erro || 'Erro ao criar agendamento');
+          mostrarErro('msg-form', resultado.erro || 'Erro ao criar agendamento');
         }
       } catch (err) {
         console.error('Erro:', err);
-        mostrarErro('msg', 'Erro de conexão com servidor');
+        mostrarErro('msg-form', 'Erro de conexão com servidor');
       }
     }
   </script>
