@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Recebedor - AgendaMercado</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <h2>Login Recebedor</h2>
+      <p>Acesso administrativo</p>
+
+      <div id="msg"></div>
+
+      <form onsubmit="fazerLogin(event)">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="email" required />
+        </div>
+
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="senha" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Entrar</button>
+
+        <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'" style="margin-top: 10px;">
+          Voltar
+        </button>
+      </form>
+
+      <div class="alert alert-info" style="margin-top: 16px;">
+        <strong>⚠️ Área Restrita</strong><br/>
+        Contate o proprietário para acesso.
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    async function fazerLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/auth/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          salvarDados(CONFIG.STORAGE.RECEBEDOR, data.admin);
+          mostrarSucesso('msg', 'Login realizado!');
+          setTimeout(() => {
+            window.location.href = 'painel-recebedor.html';
+          }, 1000);
+        } else {
+          mostrarErro('msg', data.erro || 'Credenciais inválidas');
+        }
+      } catch (err) {
+        mostrarErro('msg', 'Erro de conexão');
+      }
+    }
+  </script>
+</body>
+</html>
