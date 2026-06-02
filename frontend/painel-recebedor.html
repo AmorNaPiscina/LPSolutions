@@ -142,6 +142,7 @@
     let recebedor = null;
     let agendamentos = [];
     let fornecedores = [];
+    let diaSelecionado = null;
 
     window.addEventListener('DOMContentLoaded', () => {
       recebedor = verificarLoginRecebedor();
@@ -207,6 +208,7 @@
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos`);
         agendamentos = await res.json();
         renderizar();
+        if (diaSelecionado) verDia(diaSelecionado);
       } catch (err) {
         console.error('Erro:', err);
         mostrarErro('msg', 'Erro ao carregar agendamentos');
@@ -252,6 +254,7 @@
     }
 
     function verDia(dataStr) {
+      diaSelecionado = dataStr;
       const agendsDoDia = agendamentos.filter(ag => ag.data_entrega.split('T')[0] === dataStr);
       const data = new Date(dataStr + 'T12:00:00');
       const dataFormatada = data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
