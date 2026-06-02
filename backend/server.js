@@ -7,10 +7,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
-<<<<<<< HEAD
-=======
 const nodemailer = require('nodemailer');
->>>>>>> master
 
 // ===========================
 // CONFIG
@@ -68,8 +65,6 @@ function validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim
 }
 
 // ===========================
-<<<<<<< HEAD
-=======
 // EMAIL
 // ===========================
 let transporter = null;
@@ -138,7 +133,6 @@ function fmtData(d) {
 }
 
 // ===========================
->>>>>>> master
 // FUNÇÃO: LIMPAR AGENDAMENTOS EXPIRADOS
 // ===========================
 async function limparAgendamentosExpirados() {
@@ -252,10 +246,6 @@ app.post('/api/agendamentos', async (req, res) => {
        tipo_mercadoria, volume, tempo_estimado, observacoes, status || 'Pendente']
     );
 
-<<<<<<< HEAD
-    console.log('✅ Agendamento criado:', result.rows[0].id);
-    res.status(201).json(result.rows[0]);
-=======
     const ag = result.rows[0];
     console.log('✅ Agendamento criado:', ag.id);
     res.status(201).json(ag);
@@ -286,7 +276,6 @@ app.post('/api/agendamentos', async (req, res) => {
         ])
       );
     }
->>>>>>> master
   } catch (err) {
     console.error('❌ Erro ao criar:', err);
     res.status(500).json({ erro: err.message });
@@ -306,10 +295,6 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
-<<<<<<< HEAD
-    console.log('✅ Aprovado:', req.params.id);
-    res.json(result.rows[0]);
-=======
     const ag = result.rows[0];
     console.log('✅ Aprovado:', ag.id);
     res.json(ag);
@@ -323,7 +308,6 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
         `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`
       ])
     );
->>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -342,10 +326,6 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
-<<<<<<< HEAD
-    console.log('✅ Recusado:', req.params.id);
-    res.json(result.rows[0]);
-=======
     const ag = result.rows[0];
     console.log('✅ Recusado:', ag.id);
     res.json(ag);
@@ -360,7 +340,6 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
         `Você pode propor um novo horário acessando o sistema.`
       ])
     );
->>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -395,10 +374,6 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
-<<<<<<< HEAD
-    console.log('✅ Reagendado:', req.params.id);
-    res.json(result.rows[0]);
-=======
     const ag = result.rows[0];
     console.log('✅ Reagendado:', ag.id);
     res.json(ag);
@@ -424,7 +399,6 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
         `Aguardando aprovação do recebedor.`
       ])
     );
->>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -433,8 +407,6 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
 // Cancelar
 app.delete('/api/agendamentos/:id', async (req, res) => {
   try {
-<<<<<<< HEAD
-=======
     const agBefore = await pool.query(
       `SELECT a.*, f.nome_empresa FROM agendamentos a
        JOIN fornecedores f ON f.id = a.fornecedor_id
@@ -442,15 +414,12 @@ app.delete('/api/agendamentos/:id', async (req, res) => {
       [req.params.id]
     );
 
->>>>>>> master
     const result = await pool.query('DELETE FROM agendamentos WHERE id = $1', [req.params.id]);
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
     console.log('✅ Cancelado:', req.params.id);
     res.json({ mensagem: 'Cancelado' });
-<<<<<<< HEAD
-=======
 
     if (agBefore.rows.length > 0) {
       const ag = agBefore.rows[0];
@@ -465,7 +434,6 @@ app.delete('/api/agendamentos/:id', async (req, res) => {
         ])
       );
     }
->>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
