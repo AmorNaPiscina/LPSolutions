@@ -13,26 +13,19 @@
       <div class="user-info">
         <span id="nome-fornecedor">Carregando...</span>
       </div>
-      <button class="dark-toggle" onclick="toggleDarkMode()" title="Modo noturno">
-        🌙
-      </button>
-      <button class="btn btn-danger" onclick="logout('fornecedor')" style="width: auto; padding: 8px 16px;">
-        Sair
-      </button>
+      <button class="dark-toggle" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
+      <button class="btn btn-danger" onclick="logout('fornecedor')" style="width: auto; padding: 8px 16px;">Sair</button>
     </div>
   </div>
 
   <div class="container">
     <div id="msg"></div>
-
     <div class="stats" id="stats"></div>
 
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="font-size: 18px; font-weight: 600;">Meus Agendamentos</h2>
-        <button class="btn btn-primary" onclick="toggleForm()" style="width: auto; padding: 10px 24px;">
-          + Novo
-        </button>
+        <button class="btn btn-primary" onclick="toggleForm()" style="width: auto; padding: 10px 24px;">+ Novo</button>
       </div>
 
       <div id="form-agend" style="display: none; background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
@@ -121,11 +114,8 @@
       };
       document.getElementById('horaini').addEventListener('change', calc);
       document.getElementById('tempo').addEventListener('input', calc);
-
-      // Validar horário bloqueado
       document.getElementById('data').addEventListener('change', validarBloqueio);
       document.getElementById('horaini').addEventListener('change', validarBloqueio);
-      document.getElementById('horafim').addEventListener('change', validarBloqueio);
     }
 
     function validarBloqueio() {
@@ -136,7 +126,7 @@
       if (data && horaini && horafim) {
         const validacao = validarHorarioBloqueado(data, horaini, horafim);
         if (validacao.bloqueado) {
-          mostrarErro('msg', `❌ Horário bloqueado: ${validacao.motivo} (${validacao.periodo}) - ${obterDiaSemana(data).toUpperCase()}`);
+          mostrarErro('msg', `❌ Horário bloqueado: ${validacao.motivo} (${validacao.periodo})`);
         } else {
           document.getElementById('msg').innerHTML = '';
         }
@@ -150,6 +140,7 @@
         renderizar();
       } catch (err) {
         console.error('Erro:', err);
+        mostrarErro('msg', 'Erro ao carregar agendamentos');
       }
     }
 
@@ -190,15 +181,18 @@
 
       const data = document.getElementById('data').value;
       const inicio = document.getElementById('horaini').value;
+      const tipo = document.getElementById('tipo').value;
       const tempo = document.getElementById('tempo').value;
+      const volume = document.getElementById('volume').value;
+      const obs = document.getElementById('obs').value;
+
       const [h, m] = inicio.split(':').map(Number);
       const totalMin = h * 60 + m + parseInt(tempo);
       const fim = `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
 
-      // Validar se horário está bloqueado
       const validacao = validarHorarioBloqueado(data, inicio, fim);
       if (validacao.bloqueado) {
-        mostrarErro('msg', `❌ Não é possível agendar: ${validacao.motivo} (${validacao.periodo})`);
+        mostrarErro('msg', `❌ Não é possível agendar: ${validacao.motivo}`);
         return;
       }
 
@@ -211,21 +205,28 @@
             data_entrega: data,
             horario_inicio: inicio,
             horario_fim: fim,
-            tipo_mercadoria: document.getElementById('tipo').value,
-            volume: document.getElementById('volume').value,
+            tipo_mercadoria: tipo,
+            volume: volume,
             tempo_estimado: parseInt(tempo),
-            observacoes: document.getElementById('obs').value
+            observacoes: obs,
+            status: 'Pendente'
           })
         });
 
+        const resultado = await res.json();
+
         if (res.ok) {
-          mostrarSucesso('msg', 'Agendamento criado!');
+          mostrarSucesso('msg', 'Agendamento criado com sucesso!');
           document.getElementById('form-agend').reset();
+          document.getElementById('horafim').value = '';
           toggleForm();
-          carregarAgendamentos();
+          setTimeout(() => carregarAgendamentos(), 1500);
+        } else {
+          mostrarErro('msg', resultado.erro || 'Erro ao criar agendamento');
         }
       } catch (err) {
-        mostrarErro('msg', 'Erro ao criar agendamento');
+        console.error('Erro:', err);
+        mostrarErro('msg', 'Erro de conexão com servidor');
       }
     }
   </script>
