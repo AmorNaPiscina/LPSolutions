@@ -218,14 +218,6 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
 });
 
 // Cancelar
-console.log('ID recebido:', req.params.id);
-
-const teste = await pool.query(
-  'SELECT * FROM agendamentos WHERE id = $1',
-  [req.params.id]
-);
-
-console.log('Encontrados:', teste.rows);
 app.delete('/api/agendamentos/:id', async (req, res) => {
   try {
     const result = await pool.query('DELETE FROM agendamentos WHERE id = $1', [req.params.id]);
