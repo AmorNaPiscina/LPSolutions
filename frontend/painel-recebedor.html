@@ -236,7 +236,7 @@
         const data = new Date(hoje);
         data.setDate(hoje.getDate() + i);
         const dataStr = data.toISOString().split('T')[0];
-        const count = agendamentos.filter(ag => ag.data_entrega === dataStr).length;
+        const count = agendamentos.filter(ag => ag.data_entrega.split('T')[0] === dataStr).length;
         const diaNum = data.getDate();
 
         html += `
@@ -252,7 +252,7 @@
     }
 
     function verDia(dataStr) {
-      const agendsDoDia = agendamentos.filter(ag => ag.data_entrega === dataStr);
+      const agendsDoDia = agendamentos.filter(ag => ag.data_entrega.split('T')[0] === dataStr);
       const data = new Date(dataStr + 'T12:00:00');
       const dataFormatada = data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
