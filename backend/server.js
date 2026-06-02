@@ -14,7 +14,6 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   credentials: true
@@ -23,30 +22,50 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // ===========================
-// DATABASE CONNECTION
+// DATABASE
 // ===========================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-pool.on('error', (err) => {
-  console.error('Erro na pool:', err);
-});
+pool.on('error', (err) => console.error('Erro DB:', err));
 
 // ===========================
-// ROTAS DE TESTE
+// FUNÇÃO: LIMPAR AGENDAMENTOS EXPIRADOS
+// ===========================
+async function limparAgendamentosExpirados() {
+  try {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataHoje = hoje.toISOString().split('T')[0];
+
+    const result = await pool.query(
+      `DELETE FROM agendamentos 
+       WHERE data_entrega < $1 AND status = 'Pendente'
+       RETURNING id`,
+      [dataHoje]
+    );
+
+    if (result.rowCount > 0) {
+      console.log(`🗑️ Deletados ${result.rowCount} agendamentos expirados`);
+    }
+  } catch (err) {
+    console.error('❌ Erro ao limpar:', err);
+  }
+}
+
+// Executar a cada 1 hora
+setInterval(limparAgendamentosExpirados, 60 * 60 * 1000);
+limparAgendamentosExpirados();
+
+// ===========================
+// ROTAS: TESTE
 // ===========================
 app.get('/', (req, res) => {
   res.json({ 
     mensagem: '✅ API AgendaMercado online',
-    versao: '1.0.0',
-    endpoints: {
-      agendamentos: '/api/agendamentos',
-      fornecedores: '/api/fornecedores',
-      login_fornecedor: 'POST /api/auth/fornecedor/login',
-      login_admin: 'POST /api/auth/admin/login'
-    }
+    versao: '1.0.0'
   });
 });
 
@@ -54,9 +73,13 @@ app.get('/', (req, res) => {
 // ROTAS: AGENDAMENTOS
 // ===========================
 
-// Listar todos os agendamentos (admin)
+// Listar - SÓ AGENDAMENTOS FUTUROS
 app.get('/api/agendamentos', async (req, res) => {
   try {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataHoje = hoje.toISOString().split('T')[0];
+
     const result = await pool.query(`
       SELECT 
         a.*,
@@ -65,26 +88,31 @@ app.get('/api/agendamentos', async (req, res) => {
         f.telefone
       FROM agendamentos a
       LEFT JOIN fornecedores f ON a.fornecedor_id = f.id
+      WHERE a.data_entrega >= $1
       ORDER BY a.data_entrega DESC, a.horario_inicio DESC
-    `);
+    `, [dataHoje]);
     
-    console.log('📊 Agendamentos retornados:', result.rows.length);
+    console.log('📊 Agendamentos:', result.rows.length);
     res.json(result.rows);
   } catch (err) {
-    console.error('❌ Erro ao listar agendamentos:', err);
+    console.error('❌ Erro:', err);
     res.status(500).json({ erro: err.message });
   }
 });
 
-// Listar agendamentos de um fornecedor específico
+// Listar por fornecedor - SÓ FUTUROS
 app.get('/api/fornecedor/:id/agendamentos', async (req, res) => {
   try {
     const { id } = req.params;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataHoje = hoje.toISOString().split('T')[0];
+
     const result = await pool.query(`
       SELECT * FROM agendamentos 
-      WHERE fornecedor_id = $1
+      WHERE fornecedor_id = $1 AND data_entrega >= $2
       ORDER BY data_entrega DESC, horario_inicio DESC
-    `, [id]);
+    `, [id, dataHoje]);
     
     res.json(result.rows);
   } catch (err) {
@@ -92,35 +120,35 @@ app.get('/api/fornecedor/:id/agendamentos', async (req, res) => {
   }
 });
 
-// Criar agendamento COM VALIDAÇÃO DE HORÁRIOS BLOQUEADOS
+// Criar com validação de bloqueio
 app.post('/api/agendamentos', async (req, res) => {
   try {
     const { fornecedor_id, data_entrega, horario_inicio, horario_fim, 
-            tipo_mercadoria, volume, tempo_estimado, observacoes } = req.body;
+            tipo_mercadoria, volume, tempo_estimado, observacoes, status } = req.body;
 
-    // VALIDAÇÃO: Segunda (1) e Quinta (4) das 10:00 às 12:00
+    console.log('📝 Criando agendamento:', { fornecedor_id, data_entrega, horario_inicio });
+
+    // VALIDAR HORÁRIOS BLOQUEADOS
     const data = new Date(data_entrega + 'T00:00:00');
     const diaSemana = data.getDay();
 
     const horariosBlockeados = [
-      { dia: 1, inicio: '10:00', fim: '12:00' }, // Segunda
-      { dia: 4, inicio: '10:00', fim: '12:00' }  // Quinta
+      { dia: 1, inicio: '10:00', fim: '12:00' },
+      { dia: 4, inicio: '10:00', fim: '12:00' }
     ];
 
     for (const bloqueio of horariosBlockeados) {
       if (diaSemana === bloqueio.dia) {
-        // Converter para minutos
         const [h1, m1] = horario_inicio.split(':').map(Number);
         const [h2, m2] = horario_fim.split(':').map(Number);
-        const [hBloqueio1, mBloqueio1] = bloqueio.inicio.split(':').map(Number);
-        const [hBloqueio2, mBloqueio2] = bloqueio.fim.split(':').map(Number);
+        const [hB1, mB1] = bloqueio.inicio.split(':').map(Number);
+        const [hB2, mB2] = bloqueio.fim.split(':').map(Number);
         
         const inicioMin = h1 * 60 + m1;
         const fimMin = h2 * 60 + m2;
-        const bloqueioInicioMin = hBloqueio1 * 60 + mBloqueio1;
-        const bloqueioFimMin = hBloqueio2 * 60 + mBloqueio2;
+        const bloqueioInicioMin = hB1 * 60 + mB1;
+        const bloqueioFimMin = hB2 * 60 + mB2;
 
-        // Verificar sobreposição
         if (!(fimMin <= bloqueioInicioMin || inicioMin >= bloqueioFimMin)) {
           return res.status(400).json({ 
             erro: 'Horário bloqueado - Coleta no Ceasa (10:00-12:00)',
@@ -130,87 +158,74 @@ app.post('/api/agendamentos', async (req, res) => {
       }
     }
 
-    // Inserir agendamento se passou na validação
+    // INSERIR
     const result = await pool.query(
       `INSERT INTO agendamentos 
        (fornecedor_id, data_entrega, horario_inicio, horario_fim, 
         tipo_mercadoria, volume, tempo_estimado, observacoes, status, criado_em, atualizado_em)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Pendente', NOW(), NOW())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
        RETURNING *`,
       [fornecedor_id, data_entrega, horario_inicio, horario_fim,
-       tipo_mercadoria, volume, tempo_estimado, observacoes]
+       tipo_mercadoria, volume, tempo_estimado, observacoes, status || 'Pendente']
     );
 
     console.log('✅ Agendamento criado:', result.rows[0].id);
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('❌ Erro ao criar agendamento:', err);
+    console.error('❌ Erro ao criar:', err);
     res.status(500).json({ erro: err.message });
   }
 });
 
-// Aprovar agendamento
+// Aprovar
 app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
   try {
-    const { id } = req.params;
     const result = await pool.query(
       `UPDATE agendamentos 
        SET status = 'Aprovado', atualizado_em = NOW()
        WHERE id = $1
        RETURNING *`,
-      [id]
+      [req.params.id]
     );
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ erro: 'Agendamento não encontrado' });
-    }
-
-    console.log('✅ Agendamento aprovado:', id);
+    if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
+    
+    console.log('✅ Aprovado:', req.params.id);
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// Recusar agendamento
+// Recusar
 app.put('/api/agendamentos/:id/recusar', async (req, res) => {
   try {
-    const { id } = req.params;
     const result = await pool.query(
       `UPDATE agendamentos 
        SET status = 'Recusado', atualizado_em = NOW()
        WHERE id = $1
        RETURNING *`,
-      [id]
+      [req.params.id]
     );
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ erro: 'Agendamento não encontrado' });
-    }
-
-    console.log('✅ Agendamento recusado:', id);
+    if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
+    
+    console.log('✅ Recusado:', req.params.id);
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// Cancelar/Deletar agendamento
+// Cancelar
 app.delete('/api/agendamentos/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const result = await pool.query(
-      'DELETE FROM agendamentos WHERE id = $1',
-      [id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ erro: 'Agendamento não encontrado' });
-    }
-
-    console.log('✅ Agendamento cancelado:', id);
-    res.json({ mensagem: 'Agendamento cancelado' });
+    const result = await pool.query('DELETE FROM agendamentos WHERE id = $1', [req.params.id]);
+    
+    if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
+    
+    console.log('✅ Cancelado:', req.params.id);
+    res.json({ mensagem: 'Cancelado' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -220,7 +235,6 @@ app.delete('/api/agendamentos/:id', async (req, res) => {
 // ROTAS: FORNECEDORES
 // ===========================
 
-// Listar todos os fornecedores
 app.get('/api/fornecedores', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM fornecedores ORDER BY nome_empresa');
@@ -231,7 +245,7 @@ app.get('/api/fornecedores', async (req, res) => {
 });
 
 // ===========================
-// ROTAS: AUTENTICAÇÃO FORNECEDOR
+// ROTAS: AUTENTICAÇÃO
 // ===========================
 
 // Login fornecedor
@@ -239,43 +253,29 @@ app.post('/api/auth/fornecedor/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
 
-    if (!email || !senha) {
-      return res.status(400).json({ erro: 'Email e senha são obrigatórios' });
-    }
+    if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' });
 
-    // Buscar conta do fornecedor
     const resultConta = await pool.query(
       'SELECT * FROM contas_fornecedores WHERE email = $1 AND ativo = true',
       [email]
     );
 
-    if (resultConta.rows.length === 0) {
-      return res.status(401).json({ erro: 'Email ou senha incorretos' });
-    }
+    if (resultConta.rows.length === 0) return res.status(401).json({ erro: 'Email ou senha incorretos' });
 
     const conta = resultConta.rows[0];
-
-    // Verificar senha
     const senhaValida = await bcrypt.compare(senha, conta.senha);
-    if (!senhaValida) {
-      return res.status(401).json({ erro: 'Email ou senha incorretos' });
-    }
+    
+    if (!senhaValida) return res.status(401).json({ erro: 'Email ou senha incorretos' });
 
-    // Buscar dados do fornecedor
     const resultFornecedor = await pool.query(
-      'SELECT id, nome_empresa, nome_contato, telefone, email FROM fornecedores WHERE id = $1',
+      'SELECT id, nome_empresa, nome_contato, telefone FROM fornecedores WHERE id = $1',
       [conta.fornecedor_id]
     );
 
-    const fornecedor = resultFornecedor.rows[0];
-
     console.log('✅ Login fornecedor:', email);
-    res.json({ 
-      mensagem: 'Login bem-sucedido',
-      fornecedor 
-    });
+    res.json({ mensagem: 'OK', fornecedor: resultFornecedor.rows[0] });
   } catch (err) {
-    console.error('❌ Erro no login fornecedor:', err);
+    console.error('❌ Erro login fornecedor:', err);
     res.status(500).json({ erro: err.message });
   }
 });
@@ -286,53 +286,35 @@ app.post('/api/auth/fornecedor/cadastro', async (req, res) => {
     const { nome_empresa, nome_contato, telefone, email, senha } = req.body;
 
     if (!nome_empresa || !nome_contato || !telefone || !email || !senha) {
-      return res.status(400).json({ erro: 'Todos os campos são obrigatórios' });
+      return res.status(400).json({ erro: 'Campos obrigatórios' });
     }
 
     if (senha.length < 8) {
-      return res.status(400).json({ erro: 'Senha deve ter no mínimo 8 caracteres' });
+      return res.status(400).json({ erro: 'Mínimo 8 caracteres' });
     }
 
-    // Verificar se email já existe
-    const checkEmail = await pool.query(
-      'SELECT id FROM contas_fornecedores WHERE email = $1',
-      [email]
-    );
+    const checkEmail = await pool.query('SELECT id FROM contas_fornecedores WHERE email = $1', [email]);
+    if (checkEmail.rows.length > 0) return res.status(400).json({ erro: 'Email já existe' });
 
-    if (checkEmail.rows.length > 0) {
-      return res.status(400).json({ erro: 'Email já cadastrado' });
-    }
-
-    // Hash da senha
     const senhaHash = await bcrypt.hash(senha, 10);
-
-    // Iniciar transação
     const client = await pool.connect();
 
     try {
       await client.query('BEGIN');
 
-      // Inserir fornecedor
       const resultFornecedor = await client.query(
-        `INSERT INTO fornecedores (nome_empresa, nome_contato, telefone, criado_em)
-         VALUES ($1, $2, $3, NOW())
-         RETURNING id`,
+        'INSERT INTO fornecedores (nome_empresa, nome_contato, telefone, criado_em) VALUES ($1, $2, $3, NOW()) RETURNING id',
         [nome_empresa, nome_contato, telefone]
       );
 
-      const fornecedorId = resultFornecedor.rows[0].id;
-
-      // Inserir conta
       await client.query(
-        `INSERT INTO contas_fornecedores (fornecedor_id, email, senha, ativo, criado_em)
-         VALUES ($1, $2, $3, true, NOW())`,
-        [fornecedorId, email, senhaHash]
+        'INSERT INTO contas_fornecedores (fornecedor_id, email, senha, ativo, criado_em) VALUES ($1, $2, $3, true, NOW())',
+        [resultFornecedor.rows[0].id, email, senhaHash]
       );
 
       await client.query('COMMIT');
-
       console.log('✅ Fornecedor cadastrado:', email);
-      res.status(201).json({ mensagem: 'Cadastro realizado com sucesso' });
+      res.status(201).json({ mensagem: 'Cadastro ok' });
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -340,64 +322,41 @@ app.post('/api/auth/fornecedor/cadastro', async (req, res) => {
       client.release();
     }
   } catch (err) {
-    console.error('❌ Erro no cadastro fornecedor:', err);
+    console.error('❌ Erro cadastro:', err);
     res.status(500).json({ erro: err.message });
   }
 });
 
-// ===========================
-// ROTAS: AUTENTICAÇÃO ADMIN
-// ===========================
-
-// Login admin/recebedor
+// Login admin
 app.post('/api/auth/admin/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
 
-    if (!email || !senha) {
-      return res.status(400).json({ erro: 'Email e senha são obrigatórios' });
-    }
+    if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' });
 
-    // Buscar admin na tabela usuarios
     const result = await pool.query(
       'SELECT id, nome, email FROM usuarios WHERE email = $1 AND tipo = $2',
       [email, 'admin']
     );
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ erro: 'Credenciais inválidas' });
-    }
+    if (result.rows.length === 0) return res.status(401).json({ erro: 'Credenciais inválidas' });
 
     const usuario = result.rows[0];
-
-    // Verificar senha
-    const resultSenha = await pool.query(
-      'SELECT senha FROM usuarios WHERE id = $1',
-      [usuario.id]
-    );
+    const resultSenha = await pool.query('SELECT senha FROM usuarios WHERE id = $1', [usuario.id]);
 
     const senhaValida = await bcrypt.compare(senha, resultSenha.rows[0].senha);
-    if (!senhaValida) {
-      return res.status(401).json({ erro: 'Credenciais inválidas' });
-    }
+    if (!senhaValida) return res.status(401).json({ erro: 'Credenciais inválidas' });
 
     console.log('✅ Login admin:', email);
-    res.json({ 
-      mensagem: 'Login bem-sucedido',
-      admin: {
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email
-      }
-    });
+    res.json({ mensagem: 'OK', admin: usuario });
   } catch (err) {
-    console.error('❌ Erro no login admin:', err);
+    console.error('❌ Erro login admin:', err);
     res.status(500).json({ erro: err.message });
   }
 });
 
 // ===========================
-// INICIALIZAR SERVIDOR
+// INICIAR
 // ===========================
 app.listen(PORT, () => {
   console.log(`
@@ -408,9 +367,8 @@ app.listen(PORT, () => {
   `);
 });
 
-// Tratamento de erros não capturados
 process.on('unhandledRejection', (err) => {
-  console.error('❌ Erro não tratado:', err);
+  console.error('❌ Erro:', err);
 });
 
 module.exports = app;
