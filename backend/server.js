@@ -7,6 +7,10 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
+<<<<<<< HEAD
+=======
+const nodemailer = require('nodemailer');
+>>>>>>> master
 
 // ===========================
 // CONFIG
@@ -64,6 +68,77 @@ function validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim
 }
 
 // ===========================
+<<<<<<< HEAD
+=======
+// EMAIL
+// ===========================
+let transporter = null;
+if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: parseInt(process.env.SMTP_PORT || '587') === 465,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+  });
+  console.log('📧 Email configurado:', process.env.SMTP_HOST);
+} else {
+  console.warn('⚠️  SMTP não configurado — emails desativados');
+}
+
+function templateEmail(titulo, linhas) {
+  return `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#1e3a8a,#0f766e);padding:24px;text-align:center;">
+        <h1 style="color:white;margin:0;font-size:20px;">AgendaMercado</h1>
+      </div>
+      <div style="padding:28px;">
+        <h2 style="color:#1f2937;margin-top:0;font-size:18px;">${titulo}</h2>
+        ${linhas.map(l => `<p style="color:#374151;margin:8px 0;font-size:14px;">${l}</p>`).join('')}
+      </div>
+      <div style="background:#f3f4f6;padding:14px;text-align:center;">
+        <p style="color:#9ca3af;font-size:12px;margin:0;">AgendaMercado — Sistema de Agendamento de Entregas</p>
+      </div>
+    </div>`;
+}
+
+async function enviarEmail(para, assunto, html) {
+  if (!transporter) return;
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"AgendaMercado" <${process.env.SMTP_USER}>`,
+      to: para,
+      subject: assunto,
+      html
+    });
+    console.log(`📧 Email enviado → ${para}`);
+  } catch (err) {
+    console.error('❌ Erro ao enviar email:', err.message);
+  }
+}
+
+async function emailFornecedor(fornecedor_id, assunto, html) {
+  try {
+    const r = await pool.query(
+      'SELECT email FROM contas_fornecedores WHERE fornecedor_id = $1 AND ativo = true',
+      [fornecedor_id]
+    );
+    if (r.rows.length > 0) enviarEmail(r.rows[0].email, assunto, html);
+  } catch (err) {
+    console.error('❌ Erro ao buscar email do fornecedor:', err.message);
+  }
+}
+
+function emailAdmin(assunto, html) {
+  const dest = process.env.ADMIN_EMAIL;
+  if (dest) enviarEmail(dest, assunto, html);
+}
+
+function fmtData(d) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
+}
+
+// ===========================
+>>>>>>> master
 // FUNÇÃO: LIMPAR AGENDAMENTOS EXPIRADOS
 // ===========================
 async function limparAgendamentosExpirados() {
@@ -177,8 +252,41 @@ app.post('/api/agendamentos', async (req, res) => {
        tipo_mercadoria, volume, tempo_estimado, observacoes, status || 'Pendente']
     );
 
+<<<<<<< HEAD
     console.log('✅ Agendamento criado:', result.rows[0].id);
     res.status(201).json(result.rows[0]);
+=======
+    const ag = result.rows[0];
+    console.log('✅ Agendamento criado:', ag.id);
+    res.status(201).json(ag);
+
+    // Notificações (fire-and-forget)
+    const nomeEmpresa = (await pool.query('SELECT nome_empresa FROM fornecedores WHERE id=$1', [fornecedor_id])).rows[0]?.nome_empresa || 'Fornecedor';
+    if (ag.status === 'Pendente') {
+      // Fornecedor criou → avisa admin
+      emailAdmin(
+        `[AgendaMercado] Novo agendamento pendente — ${nomeEmpresa}`,
+        templateEmail('Novo agendamento pendente', [
+          `<strong>${nomeEmpresa}</strong> solicitou um agendamento.`,
+          `📅 <strong>Data:</strong> ${fmtData(data_entrega)}`,
+          `🕐 <strong>Horário:</strong> ${horario_inicio} — ${horario_fim}`,
+          `📦 <strong>Mercadoria:</strong> ${tipo_mercadoria} (${volume})`,
+          `Acesse o painel para aprovar ou recusar.`
+        ])
+      );
+    } else {
+      // Admin criou direto como Aprovado → avisa fornecedor
+      emailFornecedor(fornecedor_id,
+        `[AgendaMercado] Agendamento confirmado — ${fmtData(data_entrega)}`,
+        templateEmail('Seu agendamento foi confirmado ✅', [
+          `Um agendamento foi criado para <strong>${nomeEmpresa}</strong>.`,
+          `📅 <strong>Data:</strong> ${fmtData(data_entrega)}`,
+          `🕐 <strong>Horário:</strong> ${horario_inicio} — ${horario_fim}`,
+          `📦 <strong>Mercadoria:</strong> ${tipo_mercadoria} (${volume})`
+        ])
+      );
+    }
+>>>>>>> master
   } catch (err) {
     console.error('❌ Erro ao criar:', err);
     res.status(500).json({ erro: err.message });
@@ -198,8 +306,24 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
+<<<<<<< HEAD
     console.log('✅ Aprovado:', req.params.id);
     res.json(result.rows[0]);
+=======
+    const ag = result.rows[0];
+    console.log('✅ Aprovado:', ag.id);
+    res.json(ag);
+
+    emailFornecedor(ag.fornecedor_id,
+      `[AgendaMercado] Agendamento aprovado ✅ — ${fmtData(ag.data_entrega)}`,
+      templateEmail('Seu agendamento foi aprovado! ✅', [
+        `Boas notícias! Seu agendamento foi <strong>aprovado</strong>.`,
+        `📅 <strong>Data:</strong> ${fmtData(ag.data_entrega)}`,
+        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
+        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`
+      ])
+    );
+>>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -218,8 +342,25 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
+<<<<<<< HEAD
     console.log('✅ Recusado:', req.params.id);
     res.json(result.rows[0]);
+=======
+    const ag = result.rows[0];
+    console.log('✅ Recusado:', ag.id);
+    res.json(ag);
+
+    emailFornecedor(ag.fornecedor_id,
+      `[AgendaMercado] Agendamento recusado ❌ — ${fmtData(ag.data_entrega)}`,
+      templateEmail('Agendamento recusado ❌', [
+        `Infelizmente seu agendamento foi <strong>recusado</strong>.`,
+        `📅 <strong>Data solicitada:</strong> ${fmtData(ag.data_entrega)}`,
+        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
+        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
+        `Você pode propor um novo horário acessando o sistema.`
+      ])
+    );
+>>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -254,8 +395,36 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
+<<<<<<< HEAD
     console.log('✅ Reagendado:', req.params.id);
     res.json(result.rows[0]);
+=======
+    const ag = result.rows[0];
+    console.log('✅ Reagendado:', ag.id);
+    res.json(ag);
+
+    const nomeEmpresa2 = (await pool.query('SELECT nome_empresa FROM fornecedores WHERE id=$1', [ag.fornecedor_id])).rows[0]?.nome_empresa || 'Fornecedor';
+    emailAdmin(
+      `[AgendaMercado] Agendamento reagendado — ${nomeEmpresa2}`,
+      templateEmail('Agendamento reagendado ⚡', [
+        `<strong>${nomeEmpresa2}</strong> propôs um novo horário.`,
+        `📅 <strong>Nova data:</strong> ${fmtData(ag.data_entrega)}`,
+        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
+        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
+        `Acesse o painel para aprovar ou recusar.`
+      ])
+    );
+    emailFornecedor(ag.fornecedor_id,
+      `[AgendaMercado] Reagendamento enviado — ${fmtData(ag.data_entrega)}`,
+      templateEmail('Reagendamento enviado ⚡', [
+        `Seu pedido de reagendamento foi enviado com sucesso.`,
+        `📅 <strong>Nova data:</strong> ${fmtData(ag.data_entrega)}`,
+        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
+        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
+        `Aguardando aprovação do recebedor.`
+      ])
+    );
+>>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -264,12 +433,39 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
 // Cancelar
 app.delete('/api/agendamentos/:id', async (req, res) => {
   try {
+<<<<<<< HEAD
+=======
+    const agBefore = await pool.query(
+      `SELECT a.*, f.nome_empresa FROM agendamentos a
+       JOIN fornecedores f ON f.id = a.fornecedor_id
+       WHERE a.id = $1`,
+      [req.params.id]
+    );
+
+>>>>>>> master
     const result = await pool.query('DELETE FROM agendamentos WHERE id = $1', [req.params.id]);
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
 
     console.log('✅ Cancelado:', req.params.id);
     res.json({ mensagem: 'Cancelado' });
+<<<<<<< HEAD
+=======
+
+    if (agBefore.rows.length > 0) {
+      const ag = agBefore.rows[0];
+      emailFornecedor(ag.fornecedor_id,
+        `[AgendaMercado] Agendamento cancelado — ${fmtData(ag.data_entrega)}`,
+        templateEmail('Agendamento cancelado', [
+          `Seu agendamento foi <strong>cancelado</strong>.`,
+          `📅 <strong>Data:</strong> ${fmtData(ag.data_entrega)}`,
+          `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
+          `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
+          `Entre em contato ou crie um novo agendamento pelo sistema.`
+        ])
+      );
+    }
+>>>>>>> master
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
