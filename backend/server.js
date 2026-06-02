@@ -32,6 +32,38 @@ const pool = new Pool({
 pool.on('error', (err) => console.error('Erro DB:', err));
 
 // ===========================
+// HELPER: VALIDAR HORÁRIO BLOQUEADO
+// ===========================
+function validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim) {
+  const data = new Date(data_entrega + 'T00:00:00');
+  const diaSemana = data.getDay();
+
+  const bloqueios = [
+    { dia: 1, inicio: '10:00', fim: '12:00' },
+    { dia: 4, inicio: '10:00', fim: '12:00' }
+  ];
+
+  for (const bloqueio of bloqueios) {
+    if (diaSemana === bloqueio.dia) {
+      const [h1, m1] = horario_inicio.split(':').map(Number);
+      const [h2, m2] = horario_fim.split(':').map(Number);
+      const [hB1, mB1] = bloqueio.inicio.split(':').map(Number);
+      const [hB2, mB2] = bloqueio.fim.split(':').map(Number);
+
+      const inicioMin = h1 * 60 + m1;
+      const fimMin = h2 * 60 + m2;
+      const bloqueioInicioMin = hB1 * 60 + mB1;
+      const bloqueioFimMin = hB2 * 60 + mB2;
+
+      if (!(fimMin <= bloqueioInicioMin || inicioMin >= bloqueioFimMin)) {
+        return { bloqueado: true };
+      }
+    }
+  }
+  return { bloqueado: false };
+}
+
+// ===========================
 // FUNÇÃO: LIMPAR AGENDAMENTOS EXPIRADOS
 // ===========================
 async function limparAgendamentosExpirados() {
@@ -41,7 +73,7 @@ async function limparAgendamentosExpirados() {
     const dataHoje = hoje.toISOString().split('T')[0];
 
     const result = await pool.query(
-      `DELETE FROM agendamentos 
+      `DELETE FROM agendamentos
        WHERE data_entrega < $1 AND status = 'Pendente'
        RETURNING id`,
       [dataHoje]
@@ -55,7 +87,6 @@ async function limparAgendamentosExpirados() {
   }
 }
 
-// Executar a cada 1 hora
 setInterval(limparAgendamentosExpirados, 60 * 60 * 1000);
 limparAgendamentosExpirados();
 
@@ -63,9 +94,9 @@ limparAgendamentosExpirados();
 // ROTAS: TESTE
 // ===========================
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     mensagem: '✅ API AgendaMercado online',
-    versao: '1.0.0'
+    versao: '2.0.0'
   });
 });
 
@@ -81,7 +112,7 @@ app.get('/api/agendamentos', async (req, res) => {
     const dataHoje = hoje.toISOString().split('T')[0];
 
     const result = await pool.query(`
-      SELECT 
+      SELECT
         a.*,
         f.nome_empresa,
         f.nome_contato,
@@ -89,9 +120,9 @@ app.get('/api/agendamentos', async (req, res) => {
       FROM agendamentos a
       LEFT JOIN fornecedores f ON a.fornecedor_id = f.id
       WHERE a.data_entrega >= $1
-      ORDER BY a.data_entrega DESC, a.horario_inicio DESC
+      ORDER BY a.data_entrega ASC, a.horario_inicio ASC
     `, [dataHoje]);
-    
+
     console.log('📊 Agendamentos:', result.rows.length);
     res.json(result.rows);
   } catch (err) {
@@ -109,11 +140,11 @@ app.get('/api/fornecedor/:id/agendamentos', async (req, res) => {
     const dataHoje = hoje.toISOString().split('T')[0];
 
     const result = await pool.query(`
-      SELECT * FROM agendamentos 
+      SELECT * FROM agendamentos
       WHERE fornecedor_id = $1 AND data_entrega >= $2
-      ORDER BY data_entrega DESC, horario_inicio DESC
+      ORDER BY data_entrega ASC, horario_inicio ASC
     `, [id, dataHoje]);
-    
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -123,45 +154,22 @@ app.get('/api/fornecedor/:id/agendamentos', async (req, res) => {
 // Criar com validação de bloqueio
 app.post('/api/agendamentos', async (req, res) => {
   try {
-    const { fornecedor_id, data_entrega, horario_inicio, horario_fim, 
+    const { fornecedor_id, data_entrega, horario_inicio, horario_fim,
             tipo_mercadoria, volume, tempo_estimado, observacoes, status } = req.body;
 
     console.log('📝 Criando agendamento:', { fornecedor_id, data_entrega, horario_inicio });
 
-    // VALIDAR HORÁRIOS BLOQUEADOS
-    const data = new Date(data_entrega + 'T00:00:00');
-    const diaSemana = data.getDay();
-
-    const horariosBlockeados = [
-      { dia: 1, inicio: '10:00', fim: '12:00' },
-      { dia: 4, inicio: '10:00', fim: '12:00' }
-    ];
-
-    for (const bloqueio of horariosBlockeados) {
-      if (diaSemana === bloqueio.dia) {
-        const [h1, m1] = horario_inicio.split(':').map(Number);
-        const [h2, m2] = horario_fim.split(':').map(Number);
-        const [hB1, mB1] = bloqueio.inicio.split(':').map(Number);
-        const [hB2, mB2] = bloqueio.fim.split(':').map(Number);
-        
-        const inicioMin = h1 * 60 + m1;
-        const fimMin = h2 * 60 + m2;
-        const bloqueioInicioMin = hB1 * 60 + mB1;
-        const bloqueioFimMin = hB2 * 60 + mB2;
-
-        if (!(fimMin <= bloqueioInicioMin || inicioMin >= bloqueioFimMin)) {
-          return res.status(400).json({ 
-            erro: 'Horário bloqueado - Coleta no Ceasa (10:00-12:00)',
-            horarioBloqueado: true 
-          });
-        }
-      }
+    const check = validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim);
+    if (check.bloqueado) {
+      return res.status(400).json({
+        erro: 'Horário bloqueado - Coleta no Ceasa (10:00-12:00)',
+        horarioBloqueado: true
+      });
     }
 
-    // INSERIR
     const result = await pool.query(
-      `INSERT INTO agendamentos 
-       (fornecedor_id, data_entrega, horario_inicio, horario_fim, 
+      `INSERT INTO agendamentos
+       (fornecedor_id, data_entrega, horario_inicio, horario_fim,
         tipo_mercadoria, volume, tempo_estimado, observacoes, status, criado_em, atualizado_em)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
        RETURNING *`,
@@ -181,7 +189,7 @@ app.post('/api/agendamentos', async (req, res) => {
 app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
   try {
     const result = await pool.query(
-      `UPDATE agendamentos 
+      `UPDATE agendamentos
        SET status = 'Aprovado', atualizado_em = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -189,7 +197,7 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
     );
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
-    
+
     console.log('✅ Aprovado:', req.params.id);
     res.json(result.rows[0]);
   } catch (err) {
@@ -201,7 +209,7 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
 app.put('/api/agendamentos/:id/recusar', async (req, res) => {
   try {
     const result = await pool.query(
-      `UPDATE agendamentos 
+      `UPDATE agendamentos
        SET status = 'Recusado', atualizado_em = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -209,8 +217,44 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
     );
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
-    
+
     console.log('✅ Recusado:', req.params.id);
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Reagendar (recebedor ou fornecedor propõe nova data/hora → volta para Pendente)
+app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
+  try {
+    const { data_entrega, horario_inicio, horario_fim, tempo_estimado } = req.body;
+
+    if (!data_entrega || !horario_inicio || !horario_fim) {
+      return res.status(400).json({ erro: 'Data e horários são obrigatórios' });
+    }
+
+    const check = validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim);
+    if (check.bloqueado) {
+      return res.status(400).json({
+        erro: 'Horário bloqueado - Coleta no Ceasa (10:00-12:00)',
+        horarioBloqueado: true
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE agendamentos
+       SET data_entrega = $1, horario_inicio = $2, horario_fim = $3,
+           tempo_estimado = COALESCE($4, tempo_estimado),
+           status = 'Pendente', atualizado_em = NOW()
+       WHERE id = $5
+       RETURNING *`,
+      [data_entrega, horario_inicio, horario_fim, tempo_estimado || null, req.params.id]
+    );
+
+    if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
+
+    console.log('✅ Reagendado:', req.params.id);
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -221,9 +265,9 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
 app.delete('/api/agendamentos/:id', async (req, res) => {
   try {
     const result = await pool.query('DELETE FROM agendamentos WHERE id = $1', [req.params.id]);
-    
+
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
-    
+
     console.log('✅ Cancelado:', req.params.id);
     res.json({ mensagem: 'Cancelado' });
   } catch (err) {
@@ -264,7 +308,7 @@ app.post('/api/auth/fornecedor/login', async (req, res) => {
 
     const conta = resultConta.rows[0];
     const senhaValida = await bcrypt.compare(senha, conta.senha);
-    
+
     if (!senhaValida) return res.status(401).json({ erro: 'Email ou senha incorretos' });
 
     const resultFornecedor = await pool.query(
