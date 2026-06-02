@@ -66,7 +66,7 @@
     <div class="card">
       <h2 style="font-size: 18px; margin-bottom: 20px; font-weight: 600;">Criar Agendamento</h2>
       
-      <div id="form-criar" style="background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
+      <div style="background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
         <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: 600;">Novo Agendamento</h3>
 
         <div class="alert alert-info">
@@ -74,7 +74,7 @@
           Segundas e Quintas: 10:00 - 12:00 (Coleta no Ceasa)
         </div>
 
-        <form onsubmit="criarAgendamentoAdmin(event)" style="margin-top: 16px;">
+        <form id="form-criar" onsubmit="criarAgendamentoAdmin(event)" style="margin-top: 16px;">
           <div class="form-group">
             <label>Fornecedor</label>
             <select id="fornecedor-select" required>
@@ -130,8 +130,6 @@
         </form>
       </div>
     </div>
-
-    <!-- CALENDÁRIO E AGENDA -->
     <div class="card">
       <h2 style="font-size: 18px; margin-bottom: 20px; font-weight: 600;">Agenda de Receção</h2>
       <div class="calendar-grid" id="calendario"></div>
