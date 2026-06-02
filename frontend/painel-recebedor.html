@@ -12,7 +12,6 @@
       gap: 12px;
       margin-bottom: 20px;
     }
-
     .calendar-day {
       background: white;
       padding: 12px;
@@ -22,24 +21,20 @@
       border: 1px solid var(--border);
       transition: all 0.3s;
     }
-
     .calendar-day:hover {
       border-color: var(--primary);
       box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
     }
-
     .calendar-day-num {
       font-size: 16px;
       font-weight: 700;
       color: var(--dark);
     }
-
     .calendar-day-week {
       font-size: 11px;
       color: #6b7280;
       margin-top: 4px;
     }
-
     .calendar-day-count {
       margin-top: 6px;
       background: var(--primary);
@@ -58,18 +53,13 @@
       <div class="user-info">
         <span id="nome-recebedor">Carregando...</span>
       </div>
-      <button class="dark-toggle" onclick="toggleDarkMode()" title="Modo noturno">
-        🌙
-      </button>
-      <button class="btn btn-danger" onclick="logout('recebedor')" style="width: auto; padding: 8px 16px;">
-        Sair
-      </button>
+      <button class="dark-toggle" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
+      <button class="btn btn-danger" onclick="logout('recebedor')" style="width: auto; padding: 8px 16px;">Sair</button>
     </div>
   </div>
 
   <div class="container">
     <div id="msg"></div>
-
     <div class="stats" id="stats"></div>
 
     <!-- FORMULÁRIO PARA CRIAR AGENDAMENTOS -->
@@ -144,9 +134,7 @@
     <!-- CALENDÁRIO E AGENDA -->
     <div class="card">
       <h2 style="font-size: 18px; margin-bottom: 20px; font-weight: 600;">Agenda de Receção</h2>
-      
       <div class="calendar-grid" id="calendario"></div>
-
       <div id="dia-detalhe"></div>
     </div>
   </div>
@@ -197,11 +185,8 @@
       };
       document.getElementById('horaini-admin').addEventListener('change', calc);
       document.getElementById('tempo-admin').addEventListener('input', calc);
-
-      // Validar horário bloqueado em tempo real
       document.getElementById('data-admin').addEventListener('change', validarBloqueioAoDigitar);
       document.getElementById('horaini-admin').addEventListener('change', validarBloqueioAoDigitar);
-      document.getElementById('horafim-admin').addEventListener('change', validarBloqueioAoDigitar);
     }
 
     function validarBloqueioAoDigitar() {
@@ -212,7 +197,7 @@
       if (data && horaini && horafim) {
         const validacao = validarHorarioBloqueado(data, horaini, horafim);
         if (validacao.bloqueado) {
-          mostrarErro('msg-criar', `❌ Horário bloqueado: ${validacao.motivo} (${validacao.periodo}) - ${obterDiaSemana(data).toUpperCase()}`);
+          mostrarErro('msg-criar', `❌ Horário bloqueado: ${validacao.motivo} (${validacao.periodo})`);
         } else {
           document.getElementById('msg-criar').innerHTML = '';
         }
@@ -226,6 +211,7 @@
         renderizar();
       } catch (err) {
         console.error('Erro:', err);
+        mostrarErro('msg', 'Erro ao carregar agendamentos');
       }
     }
 
@@ -312,10 +298,9 @@
       const horaini = document.getElementById('horaini-admin').value;
       const horafim = document.getElementById('horafim-admin').value;
 
-      // Validar bloqueio
       const validacao = validarHorarioBloqueado(data, horaini, horafim);
       if (validacao.bloqueado) {
-        mostrarErro('msg-criar', `❌ Não é possível agendar: ${validacao.motivo} (${validacao.periodo})`);
+        mostrarErro('msg-criar', `❌ Não é possível agendar: ${validacao.motivo}`);
         return;
       }
 
@@ -330,22 +315,26 @@
             horario_fim: horafim,
             tipo_mercadoria: document.getElementById('tipo-admin').value,
             volume: document.getElementById('volume-admin').value,
-            tempo_estimado: document.getElementById('tempo-admin').value,
+            tempo_estimado: parseInt(document.getElementById('tempo-admin').value),
             observacoes: document.getElementById('obs-admin').value,
             status: 'Aprovado'
           })
         });
 
+        const resultado = await res.json();
+
         if (res.ok) {
           mostrarSucesso('msg-criar', 'Agendamento criado!');
           document.getElementById('form-criar').reset();
+          document.getElementById('horafim-admin').value = '';
           document.getElementById('msg-criar').innerHTML = '';
-          setTimeout(() => {
-            carregarAgendamentos();
-          }, 1000);
+          setTimeout(() => carregarAgendamentos(), 1500);
+        } else {
+          mostrarErro('msg-criar', resultado.erro || 'Erro ao criar agendamento');
         }
       } catch (err) {
-        mostrarErro('msg-criar', 'Erro ao criar agendamento');
+        console.error('Erro:', err);
+        mostrarErro('msg-criar', 'Erro de conexão');
       }
     }
 
@@ -353,7 +342,7 @@
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/aprovar`, { method: 'PUT' });
         if (res.ok) {
-          mostrarSucesso('msg', 'Agendamento aprovado!');
+          mostrarSucesso('msg', 'Aprovado!');
           carregarAgendamentos();
         }
       } catch (err) {
@@ -366,7 +355,7 @@
         try {
           const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/recusar`, { method: 'PUT' });
           if (res.ok) {
-            mostrarSucesso('msg', 'Agendamento recusado!');
+            mostrarSucesso('msg', 'Recusado!');
             carregarAgendamentos();
           }
         } catch (err) {
@@ -376,19 +365,17 @@
     }
 
     async function cancelarAgendamento(id) {
-      if (confirm('⚠️ Cancelar este agendamento?')) {
+      if (confirm('⚠️ Cancelar agendamento?')) {
         try {
-          const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}`, { 
-            method: 'DELETE'
-          });
+          const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}`, { method: 'DELETE' });
           if (res.ok) {
-            mostrarSucesso('msg', 'Agendamento cancelado!');
+            mostrarSucesso('msg', 'Cancelado!');
             carregarAgendamentos();
           } else {
             mostrarErro('msg', 'Erro ao cancelar');
           }
         } catch (err) {
-          mostrarErro('msg', 'Erro ao cancelar agendamento');
+          mostrarErro('msg', 'Erro ao cancelar');
         }
       }
     }
