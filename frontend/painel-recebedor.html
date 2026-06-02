@@ -167,6 +167,30 @@
       </div>
     </div>
 
+    <!-- ALTERAR SENHA -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleSenha()">
+        <h2 style="font-size:18px;font-weight:600;">Alterar Senha</h2>
+        <span id="senha-toggle-icon" style="font-size:20px;color:#6b7280;">﹢</span>
+      </div>
+      <div id="form-senha-wrap" style="display:none;margin-top:20px;">
+        <div id="msg-senha"></div>
+        <div class="form-group">
+          <label>Senha Atual</label>
+          <input type="password" id="senha-atual" placeholder="••••••••" />
+        </div>
+        <div class="form-group">
+          <label>Nova Senha</label>
+          <input type="password" id="nova-senha" placeholder="Mínimo 8 caracteres" />
+        </div>
+        <div class="form-group">
+          <label>Confirmar Nova Senha</label>
+          <input type="password" id="confirmar-senha" placeholder="Repita a nova senha" />
+        </div>
+        <button class="btn btn-primary" onclick="alterarSenha()" style="max-width:200px;">Salvar Senha</button>
+      </div>
+    </div>
+
     <!-- CALENDÁRIO -->
     <div class="card">
       <h2 style="font-size: 18px; margin-bottom: 20px; font-weight: 600;">Agenda de Receção</h2>
@@ -498,6 +522,58 @@
         } catch (err) {
           mostrarErro('msg', 'Erro de conexão ao cancelar');
         }
+      }
+    }
+
+    function toggleSenha() {
+      const wrap = document.getElementById('form-senha-wrap');
+      const icon = document.getElementById('senha-toggle-icon');
+      const open = wrap.style.display === 'none' || wrap.style.display === '';
+      wrap.style.display = open ? 'block' : 'none';
+      icon.textContent = open ? '﹣' : '﹢';
+      if (!open) {
+        document.getElementById('senha-atual').value = '';
+        document.getElementById('nova-senha').value = '';
+        document.getElementById('confirmar-senha').value = '';
+        document.getElementById('msg-senha').innerHTML = '';
+      }
+    }
+
+    async function alterarSenha() {
+      const senhaAtual = document.getElementById('senha-atual').value;
+      const novaSenha = document.getElementById('nova-senha').value;
+      const confirmar = document.getElementById('confirmar-senha').value;
+
+      if (!senhaAtual || !novaSenha || !confirmar) {
+        mostrarErro('msg-senha', 'Preencha todos os campos.');
+        return;
+      }
+      if (novaSenha.length < 8) {
+        mostrarErro('msg-senha', 'Nova senha deve ter no mínimo 8 caracteres.');
+        return;
+      }
+      if (novaSenha !== confirmar) {
+        mostrarErro('msg-senha', 'Nova senha e confirmação não coincidem.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/auth/admin/alterar-senha`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: recebedor.email, senha_atual: senhaAtual, nova_senha: novaSenha })
+        });
+        const resultado = await res.json();
+        if (res.ok) {
+          mostrarSucesso('msg-senha', 'Senha alterada com sucesso!');
+          document.getElementById('senha-atual').value = '';
+          document.getElementById('nova-senha').value = '';
+          document.getElementById('confirmar-senha').value = '';
+        } else {
+          mostrarErro('msg-senha', resultado.erro || 'Erro ao alterar senha');
+        }
+      } catch (err) {
+        mostrarErro('msg-senha', 'Erro de conexão');
       }
     }
   </script>
