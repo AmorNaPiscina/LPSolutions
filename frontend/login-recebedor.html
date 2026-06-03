@@ -7,34 +7,36 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div class="login-container">
-    <div class="login-box">
-      <h2>Login Recebedor</h2>
-      <p>Acesso administrativo</p>
+  <div class="auth-layout">
+    <div class="auth-card">
+      <a href="index.html" class="auth-brand">
+        <div class="brand-mark">📦</div>
+        <span class="brand-name">AgendaMercado</span>
+      </a>
+
+      <h2 class="auth-title">Painel Administrativo</h2>
+      <p class="auth-subtitle">Acesso restrito ao recebedor. Entre com suas credenciais.</p>
 
       <div id="msg"></div>
 
       <form onsubmit="fazerLogin(event)">
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="email" required />
+          <input type="email" id="email" placeholder="admin@email.com" required />
         </div>
-
         <div class="form-group">
           <label>Senha</label>
-          <input type="password" id="senha" required />
+          <input type="password" id="senha" placeholder="••••••••" required />
         </div>
-
-        <button type="submit" class="btn btn-primary">Entrar</button>
-
-        <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'" style="margin-top: 10px;">
-          Voltar
-        </button>
+        <button type="submit" class="btn btn-primary">Entrar no Painel</button>
+        <div style="margin-top:14px;">
+          <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'">← Voltar</button>
+        </div>
       </form>
 
-      <div class="alert alert-info" style="margin-top: 16px;">
+      <div class="alert alert-info" style="margin-top:20px;margin-bottom:0;">
         <strong>⚠️ Área Restrita</strong><br/>
-        Contate o proprietário para acesso.
+        Contate o administrador para obter acesso.
       </div>
     </div>
   </div>
@@ -45,26 +47,22 @@
       e.preventDefault();
       const email = document.getElementById('email').value;
       const senha = document.getElementById('senha').value;
-
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/auth/admin/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, senha })
         });
-
         const data = await res.json();
         if (res.ok) {
           salvarDados(CONFIG.STORAGE.RECEBEDOR, data.admin);
           mostrarSucesso('msg', 'Login realizado!');
-          setTimeout(() => {
-            window.location.href = 'painel-recebedor.html';
-          }, 1000);
+          setTimeout(() => { window.location.href = 'painel-recebedor.html'; }, 800);
         } else {
           mostrarErro('msg', data.erro || 'Credenciais inválidas');
         }
       } catch (err) {
-        mostrarErro('msg', 'Erro de conexão');
+        mostrarErro('msg', 'Erro de conexão com o servidor');
       }
     }
   </script>

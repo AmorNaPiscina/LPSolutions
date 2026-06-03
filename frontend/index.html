@@ -3,30 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgendaMercado - Sistema de Agendamentos</title>
+  <title>AgendaMercado</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div class="login-container">
-    <div class="login-box">
-      <h2>Bem-vindo</h2>
-      <p>Sistema profissional de agendamento</p>
+  <div class="auth-layout">
+    <div class="auth-card auth-card--wide">
+      <div style="text-align:center; margin-bottom:32px;">
+        <div style="display:inline-flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div class="brand-mark" style="width:44px;height:44px;border-radius:12px;font-size:22px;">📦</div>
+          <span style="font-size:26px;font-weight:800;color:var(--text);letter-spacing:-0.6px;">AgendaMercado</span>
+        </div>
+        <p style="font-size:14px;color:var(--muted);">Sistema de agendamento de entregas</p>
+      </div>
 
-      <button class="btn btn-primary" onclick="window.location.href='login-fornecedor.html'" style="margin-bottom: 10px;">
-        Fornecedor
-      </button>
+      <p style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:center;margin-bottom:4px;">
+        Selecione seu perfil
+      </p>
 
-      <button class="btn btn-secondary" onclick="window.location.href='login-recebedor.html'">
-        Recebedor
-      </button>
-
-      <div class="alert alert-info" style="margin-top: 20px;">
-        <strong>AgendaMercado</strong><br/>
-        Solução profissional para gerenciar agendamentos de entrega.
+      <div class="role-grid">
+        <a href="login-fornecedor.html" class="role-card">
+          <span class="role-icon">🚚</span>
+          <span class="role-title">Fornecedor</span>
+          <span class="role-desc">Solicitar e gerenciar agendamentos de entrega</span>
+        </a>
+        <a href="login-recebedor.html" class="role-card">
+          <span class="role-icon">🏪</span>
+          <span class="role-title">Recebedor</span>
+          <span class="role-desc">Aprovar e gerenciar a agenda de recebimento</span>
+        </a>
       </div>
     </div>
   </div>
-
   <script src="js/config.js"></script>
 </body>
 </html>

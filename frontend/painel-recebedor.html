@@ -5,95 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel de Receção - AgendaMercado</title>
   <link rel="stylesheet" href="css/styles.css">
-  <style>
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .calendar-day {
-      background: white;
-      padding: 12px;
-      border-radius: 4px;
-      text-align: center;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      transition: all 0.3s;
-    }
-    .calendar-day:hover {
-      border-color: var(--primary);
-      box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
-    }
-    .calendar-day-num {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--dark);
-    }
-    .calendar-day-week {
-      font-size: 11px;
-      color: #6b7280;
-      margin-top: 4px;
-    }
-    .calendar-day-count {
-      margin-top: 6px;
-      background: var(--primary);
-      color: white;
-      padding: 3px 6px;
-      border-radius: 2px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .btn-warning {
-      background: #d97706;
-      color: white;
-      padding: 8px 16px;
-      font-size: 13px;
-    }
-    .btn-warning:hover { background: #b45309; }
-    .reagendar-form {
-      display: none;
-      margin-top: 12px;
-      background: #fffbeb;
-      padding: 12px;
-      border-radius: 4px;
-      border: 1px solid #fcd34d;
-    }
-    .reagendar-form label {
-      font-size: 11px;
-      color: #6b7280;
-      display: block;
-      margin-bottom: 3px;
-    }
-    .reagendar-form input {
-      padding: 6px 8px;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      font-size: 13px;
-      width: 100%;
-    }
-    .reagendar-fields {
-      display: grid;
-      grid-template-columns: 1fr 1fr 80px;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    @media (max-width: 480px) {
-      .reagendar-fields { grid-template-columns: 1fr 1fr; }
-    }
-  </style>
 </head>
 <body>
-  <div class="header">
-    <h1>AgendaMercado</h1>
-    <div class="header-right">
-      <div class="user-info">
-        <span id="nome-recebedor">Carregando...</span>
+  <header class="header">
+    <div class="header-inner">
+      <a href="#" class="brand">
+        <div class="brand-mark">📦</div>
+        <span class="brand-name">AgendaMercado</span>
+      </a>
+      <div class="header-right">
+        <div class="user-chip">
+          <div class="user-avatar" id="user-initial">A</div>
+          <span id="nome-recebedor">Carregando...</span>
+        </div>
+        <button class="icon-btn" onclick="toggleDarkMode()" title="Alternar tema">☀️</button>
+        <button class="btn btn-danger" onclick="logout('recebedor')" style="width:auto;">Sair</button>
       </div>
-      <button class="dark-toggle" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
-      <button class="btn btn-danger" onclick="logout('recebedor')" style="width: auto; padding: 8px 16px;">Sair</button>
     </div>
-  </div>
+  </header>
 
   <div class="container">
     <div id="msg"></div>
@@ -101,24 +30,22 @@
 
     <!-- CRIAR AGENDAMENTO -->
     <div class="card">
-      <h2 style="font-size: 18px; margin-bottom: 20px; font-weight: 600;">Criar Agendamento</h2>
+      <div class="card-header">
+        <h2 class="card-title">Criar Agendamento</h2>
+      </div>
 
-      <div style="background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
-        <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: 600;">Novo Agendamento</h3>
-
-        <div class="alert alert-info">
-          <strong>⚠️ Horários Bloqueados:</strong><br/>
-          Segundas e Quintas: 10:00 - 12:00 (Coleta no Ceasa)
+      <div style="background:var(--hi);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;">
+        <div class="info-box">
+          <strong>⚠️ Horários Bloqueados:</strong> Segundas e Quintas das 10:00 às 12:00 (Coleta no Ceasa)
         </div>
 
-        <form id="form-criar" onsubmit="criarAgendamentoAdmin(event)" style="margin-top: 16px;">
+        <form id="form-criar" onsubmit="criarAgendamentoAdmin(event)">
           <div class="form-group">
             <label>Fornecedor</label>
             <select id="fornecedor-select" required>
               <option value="">Selecione um fornecedor...</option>
             </select>
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label>Data</label>
@@ -126,10 +53,9 @@
             </div>
             <div class="form-group">
               <label>Tipo de Mercadoria</label>
-              <input type="text" id="tipo-admin" required />
+              <input type="text" id="tipo-admin" placeholder="Ex: Hortifrutti" required />
             </div>
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label>Hora Início</label>
@@ -140,10 +66,9 @@
               <input type="number" id="tempo-admin" min="15" step="15" value="30" required />
             </div>
           </div>
-
           <div class="form-row">
             <div class="form-group">
-              <label>Hora Fim</label>
+              <label>Hora Fim (calculado)</label>
               <input type="time" id="horafim-admin" readonly />
             </div>
             <div class="form-group">
@@ -155,12 +80,10 @@
               </select>
             </div>
           </div>
-
           <div class="form-group">
             <label>Observações</label>
-            <textarea id="obs-admin" rows="3"></textarea>
+            <textarea id="obs-admin" rows="2" placeholder="Informações adicionais..."></textarea>
           </div>
-
           <div id="msg-criar"></div>
           <button type="submit" class="btn btn-primary">Criar Agendamento</button>
         </form>
@@ -170,18 +93,20 @@
     <!-- ALTERAR SENHA -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleSenha()">
-        <h2 style="font-size:18px;font-weight:600;">Alterar Senha</h2>
-        <span id="senha-toggle-icon" style="font-size:20px;color:#6b7280;">﹢</span>
+        <h2 class="card-title">Alterar Senha</h2>
+        <span id="senha-toggle-icon" style="font-size:18px;color:var(--muted);">﹢</span>
       </div>
       <div id="form-senha-wrap" style="display:none;margin-top:20px;">
         <div id="msg-senha"></div>
-        <div class="form-group">
-          <label>Senha Atual</label>
-          <input type="password" id="senha-atual" placeholder="••••••••" />
-        </div>
-        <div class="form-group">
-          <label>Nova Senha</label>
-          <input type="password" id="nova-senha" placeholder="Mínimo 8 caracteres" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Senha Atual</label>
+            <input type="password" id="senha-atual" placeholder="••••••••" />
+          </div>
+          <div class="form-group">
+            <label>Nova Senha</label>
+            <input type="password" id="nova-senha" placeholder="Mínimo 8 caracteres" />
+          </div>
         </div>
         <div class="form-group">
           <label>Confirmar Nova Senha</label>
@@ -193,7 +118,9 @@
 
     <!-- CALENDÁRIO -->
     <div class="card">
-      <h2 style="font-size: 18px; margin-bottom: 20px; font-weight: 600;">Agenda de Receção</h2>
+      <div class="card-header">
+        <h2 class="card-title">Agenda de Receção</h2>
+      </div>
       <div class="calendar-grid" id="calendario"></div>
       <div id="dia-detalhe"></div>
     </div>
@@ -210,6 +137,7 @@
       recebedor = verificarLoginRecebedor();
       if (recebedor) {
         document.getElementById('nome-recebedor').textContent = recebedor.nome;
+        document.getElementById('user-initial').textContent = (recebedor.nome || 'A').charAt(0);
         document.getElementById('data-admin').min = new Date().toISOString().split('T')[0];
         carregarAgendamentos();
         carregarFornecedores();
@@ -224,19 +152,16 @@
         const select = document.getElementById('fornecedor-select');
         fornecedores.forEach(f => {
           const opt = document.createElement('option');
-          opt.value = f.id;
-          opt.textContent = f.nome_empresa;
+          opt.value = f.id; opt.textContent = f.nome_empresa;
           select.appendChild(opt);
         });
-      } catch (err) {
-        console.error('Erro ao carregar fornecedores:', err);
-      }
+      } catch (err) { console.error('Erro ao carregar fornecedores:', err); }
     }
 
     function configurarCalculo() {
       const calc = () => {
         const inicio = document.getElementById('horaini-admin').value;
-        const tempo = document.getElementById('tempo-admin').value;
+        const tempo  = document.getElementById('tempo-admin').value;
         if (inicio && tempo) {
           const [h, m] = inicio.split(':').map(Number);
           const total = h * 60 + m + parseInt(tempo);
@@ -251,16 +176,13 @@
     }
 
     function validarBloqueioAoDigitar() {
-      const data = document.getElementById('data-admin').value;
+      const data    = document.getElementById('data-admin').value;
       const horaini = document.getElementById('horaini-admin').value;
       const horafim = document.getElementById('horafim-admin').value;
       if (data && horaini && horafim) {
         const v = validarHorarioBloqueado(data, horaini, horafim);
-        if (v.bloqueado) {
-          mostrarErro('msg-criar', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`);
-        } else {
-          document.getElementById('msg-criar').innerHTML = '';
-        }
+        if (v.bloqueado) mostrarErro('msg-criar', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`);
+        else document.getElementById('msg-criar').innerHTML = '';
       }
     }
 
@@ -272,8 +194,7 @@
         renderizar();
         if (diaSelecionado) verDia(diaSelecionado);
       } catch (err) {
-        console.error('Erro:', err);
-        mostrarErro('msg', 'Erro ao carregar agendamentos. O servidor pode estar iniciando — tente novamente em alguns segundos.');
+        mostrarErro('msg', 'Erro ao carregar agendamentos. O servidor pode estar iniciando — tente novamente.');
       }
     }
 
@@ -281,7 +202,6 @@
       const pendentes = agendamentos.filter(a => a.status === 'Pendente').length;
       const aprovados = agendamentos.filter(a => a.status === 'Aprovado').length;
       const recusados = agendamentos.filter(a => a.status === 'Recusado').length;
-
       document.getElementById('stats').innerHTML = `
         <div class="stat-card"><h3>${pendentes}</h3><p>Pendentes</p></div>
         <div class="stat-card"><h3>${aprovados}</h3><p>Aprovados</p></div>
@@ -299,87 +219,75 @@
         data.setDate(hoje.getDate() + i);
         const dataStr = data.toISOString().split('T')[0];
         const count = agendamentos.filter(ag => ag.data_entrega.split('T')[0] === dataStr).length;
-        const diaNum = data.getDate();
         html += `
           <div class="calendar-day" onclick="verDia('${dataStr}')">
-            <div class="calendar-day-num">${diaNum}</div>
+            <div class="calendar-day-num">${data.getDate()}</div>
             <div class="calendar-day-week">${data.toLocaleDateString('pt-BR', {weekday: 'short'})}</div>
             ${count > 0 ? `<div class="calendar-day-count">${count}</div>` : ''}
-          </div>
-        `;
+          </div>`;
       }
       document.getElementById('calendario').innerHTML = html;
     }
 
     function cardAgendamento(ag) {
-      const corBorda = ag.status === 'Pendente' ? 'var(--warning)' : ag.status === 'Aprovado' ? 'var(--success)' : 'var(--danger)';
       const hoje = new Date().toISOString().split('T')[0];
-
       let botoes = '';
       if (ag.status === 'Pendente') {
         botoes = `
           <button class="btn btn-success" onclick="aprovar(${ag.id})" style="width:auto;">Aprovar</button>
-          <button class="btn btn-danger" onclick="recusar(${ag.id})" style="width:auto;">Recusar</button>
+          <button class="btn btn-danger"  onclick="recusar(${ag.id})"  style="width:auto;">Recusar</button>
           <button class="btn btn-warning" onclick="toggleReagendar(${ag.id})" style="width:auto;">Reagendar</button>
         `;
       } else {
         botoes = `
           <button class="btn btn-warning" onclick="toggleReagendar(${ag.id})" style="width:auto;">Reagendar</button>
-          <button class="btn btn-danger" onclick="cancelarAgendamento(${ag.id})" style="width:auto;">Cancelar</button>
+          <button class="btn btn-danger"  onclick="cancelarAgendamento(${ag.id})" style="width:auto;">Cancelar</button>
         `;
       }
 
       return `
-        <div style="background:#f3f4f6;padding:16px;border-radius:4px;margin-bottom:12px;border-left:3px solid ${corBorda};">
-          <h4 style="font-weight:600;margin-bottom:8px;">${ag.nome_empresa || 'Fornecedor'}</h4>
-          <p style="font-size:13px;color:#6b7280;"><strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})</p>
-          <p style="font-size:13px;color:#6b7280;"><strong>Horário:</strong> ${ag.horario_inicio} - ${ag.horario_fim}</p>
-          <p style="font-size:13px;color:#6b7280;"><strong>Contato:</strong> ${ag.nome_contato || 'N/A'} - ${ag.telefone || 'N/A'}</p>
-          ${ag.observacoes ? `<p style="font-size:13px;color:#6b7280;margin-top:8px;"><strong>Obs:</strong> ${ag.observacoes}</p>` : ''}
-          <p style="margin-top:8px;font-size:13px;"><strong>Status:</strong> ${ag.status}</p>
-          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-            ${botoes}
+        <div class="ag-detail ag-detail-${ag.status.toLowerCase()}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
+            <div class="ag-title" style="margin-bottom:0;">${ag.nome_empresa || 'Fornecedor'}</div>
+            <span class="status-badge badge-${ag.status.toLowerCase()}">${ag.status}</span>
           </div>
+          <div class="ag-row"><strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})</div>
+          <div class="ag-row"><strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}</div>
+          <div class="ag-row"><strong>Contato:</strong> ${ag.nome_contato || 'N/A'} · ${ag.telefone || 'N/A'}</div>
+          ${ag.observacoes ? `<div class="ag-row" style="margin-top:4px;font-size:12px;color:var(--faint);">${ag.observacoes}</div>` : ''}
+          <div class="ag-actions">${botoes}</div>
           <div class="reagendar-form" id="reagendar-${ag.id}">
-            <p style="font-size:12px;font-weight:600;margin-bottom:10px;color:#92400e;">⚡ Propor novo horário (volta para Pendente):</p>
+            <p>⚡ Propor novo horário — voltará para Pendente</p>
             <div class="reagendar-fields">
-              <div>
-                <label>Data</label>
-                <input type="date" id="rd-data-${ag.id}" min="${hoje}" />
-              </div>
-              <div>
-                <label>Hora Início</label>
-                <input type="time" id="rd-hora-${ag.id}" />
-              </div>
-              <div>
-                <label>Duração (min)</label>
-                <input type="number" id="rd-tempo-${ag.id}" min="15" step="15" value="${ag.tempo_estimado || 30}" />
-              </div>
+              <div><label>Data</label><input type="date" id="rd-data-${ag.id}" min="${hoje}" /></div>
+              <div><label>Hora Início</label><input type="time" id="rd-hora-${ag.id}" /></div>
+              <div><label>Duração (min)</label><input type="number" id="rd-tempo-${ag.id}" min="15" step="15" value="${ag.tempo_estimado || 30}" /></div>
             </div>
             <div style="display:flex;gap:8px;">
-              <button onclick="reagendar(${ag.id})" class="btn btn-warning" style="width:auto;font-size:13px;padding:6px 14px;">Confirmar</button>
-              <button onclick="toggleReagendar(${ag.id})" class="btn btn-secondary" style="width:auto;font-size:13px;padding:6px 14px;">Cancelar</button>
+              <button onclick="reagendar(${ag.id})" class="btn btn-warning" style="width:auto;font-size:12px;padding:6px 14px;">Confirmar</button>
+              <button onclick="toggleReagendar(${ag.id})" class="btn btn-secondary" style="width:auto;font-size:12px;padding:6px 14px;">Cancelar</button>
             </div>
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
     function verDia(dataStr) {
       diaSelecionado = dataStr;
       const agendsDoDia = agendamentos.filter(ag => ag.data_entrega.split('T')[0] === dataStr);
-      const data = new Date(dataStr + 'T12:00:00');
-      const dataFormatada = data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const dataFormatada = new Date(dataStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-      let html = `<h3 style="margin-bottom:16px;">${dataFormatada}</h3>`;
+      let html = `<div style="margin-bottom:16px;"><span style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-0.3px;">${dataFormatada}</span></div>`;
 
       if (agendsDoDia.length === 0) {
-        html += '<p style="text-align:center;color:#6b7280;padding:40px;">Nenhum agendamento</p>';
+        html += `<div style="text-align:center;padding:32px;color:var(--muted);">
+          <div style="font-size:28px;margin-bottom:8px;">📭</div>
+          <p style="font-size:14px;">Nenhum agendamento neste dia</p>
+        </div>`;
       } else {
         agendsDoDia.forEach(ag => { html += cardAgendamento(ag); });
       }
 
-      html += '<button class="btn btn-secondary" onclick="diaSelecionado=null;renderizar()" style="margin-top:16px;width:auto;">Fechar</button>';
+      html += `<button class="btn btn-secondary" onclick="diaSelecionado=null;renderizar()" style="margin-top:12px;width:auto;">Fechar</button>`;
       document.getElementById('dia-detalhe').innerHTML = html;
     }
 
@@ -389,70 +297,40 @@
     }
 
     async function reagendar(id) {
-      const data = document.getElementById(`rd-data-${id}`).value;
-      const hora = document.getElementById(`rd-hora-${id}`).value;
+      const data  = document.getElementById(`rd-data-${id}`).value;
+      const hora  = document.getElementById(`rd-hora-${id}`).value;
       const tempo = parseInt(document.getElementById(`rd-tempo-${id}`).value);
-
-      if (!data || !hora || !tempo) {
-        mostrarErro('msg', 'Preencha data, hora início e duração para reagendar.');
-        return;
-      }
-
+      if (!data || !hora || !tempo) { mostrarErro('msg', 'Preencha data, hora e duração.'); return; }
       const [h, m] = hora.split(':').map(Number);
       const total = h * 60 + m + tempo;
       const fim = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-
       const v = validarHorarioBloqueado(data, hora, fim);
-      if (v.bloqueado) {
-        mostrarErro('msg', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`);
-        return;
-      }
-
+      if (v.bloqueado) { mostrarErro('msg', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`); return; }
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/reagendar`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data_entrega: data, horario_inicio: hora, horario_fim: fim, tempo_estimado: tempo })
         });
         const resultado = await res.json();
-        if (res.ok) {
-          mostrarSucesso('msg', 'Reagendado! Status voltou para Pendente.');
-          carregarAgendamentos();
-        } else {
-          mostrarErro('msg', resultado.erro || 'Erro ao reagendar');
-        }
-      } catch (err) {
-        mostrarErro('msg', 'Erro de conexão ao reagendar');
-      }
+        if (res.ok) { mostrarSucesso('msg', 'Reagendado! Status voltou para Pendente.'); carregarAgendamentos(); }
+        else { mostrarErro('msg', resultado.erro || 'Erro ao reagendar'); }
+      } catch { mostrarErro('msg', 'Erro de conexão'); }
     }
 
     async function criarAgendamentoAdmin(e) {
       e.preventDefault();
-      const fornecedorId = document.getElementById('fornecedor-select').value;
-      const data = document.getElementById('data-admin').value;
-      const horaini = document.getElementById('horaini-admin').value;
       const horafim = document.getElementById('horafim-admin').value;
-
-      if (!horafim) {
-        mostrarErro('msg-criar', 'Selecione a hora de início para calcular o horário de fim.');
-        return;
-      }
-
+      if (!horafim) { mostrarErro('msg-criar', 'Selecione a hora de início para calcular o fim.'); return; }
+      const data    = document.getElementById('data-admin').value;
+      const horaini = document.getElementById('horaini-admin').value;
       const v = validarHorarioBloqueado(data, horaini, horafim);
-      if (v.bloqueado) {
-        mostrarErro('msg-criar', `❌ Não é possível agendar: ${v.motivo}`);
-        return;
-      }
-
+      if (v.bloqueado) { mostrarErro('msg-criar', `❌ Não é possível agendar: ${v.motivo}`); return; }
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fornecedor_id: fornecedorId,
-            data_entrega: data,
-            horario_inicio: horaini,
-            horario_fim: horafim,
+            fornecedor_id: document.getElementById('fornecedor-select').value,
+            data_entrega: data, horario_inicio: horaini, horario_fim: horafim,
             tipo_mercadoria: document.getElementById('tipo-admin').value,
             volume: document.getElementById('volume-admin').value,
             tempo_estimado: parseInt(document.getElementById('tempo-admin').value),
@@ -460,7 +338,6 @@
             status: 'Aprovado'
           })
         });
-
         const resultado = await res.json();
         if (res.ok) {
           mostrarSucesso('msg-criar', 'Agendamento criado com sucesso!');
@@ -470,25 +347,16 @@
         } else {
           mostrarErro('msg-criar', resultado.erro || 'Erro ao criar agendamento');
         }
-      } catch (err) {
-        console.error('Erro:', err);
-        mostrarErro('msg-criar', 'Erro de conexão');
-      }
+      } catch { mostrarErro('msg-criar', 'Erro de conexão'); }
     }
 
     async function aprovar(id) {
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/aprovar`, { method: 'PUT' });
         const resultado = await res.json();
-        if (res.ok) {
-          mostrarSucesso('msg', 'Agendamento aprovado!');
-          carregarAgendamentos();
-        } else {
-          mostrarErro('msg', resultado.erro || 'Erro ao aprovar');
-        }
-      } catch (err) {
-        mostrarErro('msg', 'Erro de conexão ao aprovar');
-      }
+        if (res.ok) { mostrarSucesso('msg', 'Agendamento aprovado!'); carregarAgendamentos(); }
+        else { mostrarErro('msg', resultado.erro || 'Erro ao aprovar'); }
+      } catch { mostrarErro('msg', 'Erro de conexão'); }
     }
 
     async function recusar(id) {
@@ -496,15 +364,9 @@
         try {
           const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/recusar`, { method: 'PUT' });
           const resultado = await res.json();
-          if (res.ok) {
-            mostrarSucesso('msg', 'Agendamento recusado.');
-            carregarAgendamentos();
-          } else {
-            mostrarErro('msg', resultado.erro || 'Erro ao recusar');
-          }
-        } catch (err) {
-          mostrarErro('msg', 'Erro de conexão ao recusar');
-        }
+          if (res.ok) { mostrarSucesso('msg', 'Agendamento recusado.'); carregarAgendamentos(); }
+          else { mostrarErro('msg', resultado.erro || 'Erro ao recusar'); }
+        } catch { mostrarErro('msg', 'Erro de conexão'); }
       }
     }
 
@@ -512,16 +374,9 @@
       if (confirm('⚠️ Cancelar e remover este agendamento definitivamente?')) {
         try {
           const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}`, { method: 'DELETE' });
-          if (res.ok) {
-            mostrarSucesso('msg', 'Agendamento cancelado.');
-            carregarAgendamentos();
-          } else {
-            const resultado = await res.json();
-            mostrarErro('msg', resultado.erro || 'Erro ao cancelar');
-          }
-        } catch (err) {
-          mostrarErro('msg', 'Erro de conexão ao cancelar');
-        }
+          if (res.ok) { mostrarSucesso('msg', 'Agendamento cancelado.'); carregarAgendamentos(); }
+          else { const r = await res.json(); mostrarErro('msg', r.erro || 'Erro ao cancelar'); }
+        } catch { mostrarErro('msg', 'Erro de conexão'); }
       }
     }
 
@@ -541,26 +396,14 @@
 
     async function alterarSenha() {
       const senhaAtual = document.getElementById('senha-atual').value;
-      const novaSenha = document.getElementById('nova-senha').value;
-      const confirmar = document.getElementById('confirmar-senha').value;
-
-      if (!senhaAtual || !novaSenha || !confirmar) {
-        mostrarErro('msg-senha', 'Preencha todos os campos.');
-        return;
-      }
-      if (novaSenha.length < 8) {
-        mostrarErro('msg-senha', 'Nova senha deve ter no mínimo 8 caracteres.');
-        return;
-      }
-      if (novaSenha !== confirmar) {
-        mostrarErro('msg-senha', 'Nova senha e confirmação não coincidem.');
-        return;
-      }
-
+      const novaSenha  = document.getElementById('nova-senha').value;
+      const confirmar  = document.getElementById('confirmar-senha').value;
+      if (!senhaAtual || !novaSenha || !confirmar) { mostrarErro('msg-senha', 'Preencha todos os campos.'); return; }
+      if (novaSenha.length < 8) { mostrarErro('msg-senha', 'Nova senha deve ter mínimo 8 caracteres.'); return; }
+      if (novaSenha !== confirmar) { mostrarErro('msg-senha', 'As senhas não coincidem.'); return; }
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/auth/admin/alterar-senha`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: recebedor.email, senha_atual: senhaAtual, nova_senha: novaSenha })
         });
         const resultado = await res.json();
@@ -572,9 +415,7 @@
         } else {
           mostrarErro('msg-senha', resultado.erro || 'Erro ao alterar senha');
         }
-      } catch (err) {
-        mostrarErro('msg-senha', 'Erro de conexão');
-      }
+      } catch { mostrarErro('msg-senha', 'Erro de conexão'); }
     }
   </script>
 </body>

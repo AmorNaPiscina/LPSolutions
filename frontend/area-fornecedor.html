@@ -5,144 +5,89 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minha Conta - AgendaMercado</title>
   <link rel="stylesheet" href="css/styles.css">
-  <style>
-    .status-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-    }
-    .badge-pendente  { background: #fef3c7; color: #92400e; }
-    .badge-aprovado  { background: #dcfce7; color: #166534; }
-    .badge-recusado  { background: #fee2e2; color: #7f1d1d; }
-    .btn-warning {
-      background: #d97706;
-      color: white;
-      padding: 8px 16px;
-      font-size: 13px;
-    }
-    .btn-warning:hover { background: #b45309; }
-    .ag-card {
-      padding: 14px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-      border-left: 3px solid;
-    }
-    .ag-card-pendente { background: #fffbeb; border-left-color: var(--warning); }
-    .ag-card-aprovado { background: #f0fdf4; border-left-color: var(--success); }
-    .ag-card-recusado { background: #fff1f2; border-left-color: var(--danger); }
-    .reagendar-form {
-      display: none;
-      margin-top: 12px;
-      background: white;
-      padding: 12px;
-      border-radius: 4px;
-      border: 1px solid #fcd34d;
-    }
-    .reagendar-form label {
-      font-size: 11px;
-      color: #6b7280;
-      display: block;
-      margin-bottom: 3px;
-    }
-    .reagendar-form input {
-      padding: 6px 8px;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      font-size: 13px;
-      width: 100%;
-    }
-    .reagendar-fields {
-      display: grid;
-      grid-template-columns: 1fr 1fr 80px;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    @media (max-width: 480px) {
-      .reagendar-fields { grid-template-columns: 1fr 1fr; }
-    }
-  </style>
 </head>
 <body>
-  <div class="header">
-    <h1>AgendaMercado</h1>
-    <div class="header-right">
-      <div class="user-info">
-        <span id="nome-fornecedor">Carregando...</span>
+  <header class="header">
+    <div class="header-inner">
+      <a href="#" class="brand">
+        <div class="brand-mark">📦</div>
+        <span class="brand-name">AgendaMercado</span>
+      </a>
+      <div class="header-right">
+        <div class="user-chip">
+          <div class="user-avatar" id="user-initial">?</div>
+          <span id="nome-fornecedor">Carregando...</span>
+        </div>
+        <button class="icon-btn" onclick="toggleDarkMode()" title="Alternar tema">☀️</button>
+        <button class="btn btn-danger" onclick="logout('fornecedor')" style="width:auto;">Sair</button>
       </div>
-      <button class="dark-toggle" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
-      <button class="btn btn-danger" onclick="logout('fornecedor')" style="width: auto; padding: 8px 16px;">Sair</button>
     </div>
-  </div>
+  </header>
 
   <div class="container">
     <div id="msg"></div>
     <div class="stats" id="stats"></div>
 
+    <!-- AGENDAMENTOS -->
     <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="font-size: 18px; font-weight: 600;">Meus Agendamentos</h2>
-        <button class="btn btn-primary" onclick="toggleForm()" style="width: auto; padding: 10px 24px;">+ Novo</button>
+      <div class="card-header">
+        <h2 class="card-title">Meus Agendamentos</h2>
+        <button class="btn btn-primary" onclick="toggleForm()" style="width:auto;padding:8px 18px;">+ Novo</button>
       </div>
 
-      <form id="form-agend" onsubmit="criarAgendamento(event)" style="display: none; background: #f3f4f6; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
-        <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: 600;">Novo Agendamento</h3>
+      <div id="form-agend" style="display:none; background:var(--hi); border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; margin-bottom:20px;">
+        <h3 style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;">Novo Agendamento</h3>
 
-        <div class="alert alert-info">
-          <strong>⚠️ Horários Bloqueados:</strong><br/>
-          Segundas e Quintas: 10:00 - 12:00 (Coleta no Ceasa)
+        <div class="info-box">
+          <strong>⚠️ Horários Bloqueados:</strong> Segundas e Quintas das 10:00 às 12:00 (Coleta no Ceasa)
         </div>
 
-        <div class="form-row" style="margin-top:16px;">
-          <div class="form-group">
-            <label>Data</label>
-            <input type="date" id="data" required />
+        <form onsubmit="criarAgendamento(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Data</label>
+              <input type="date" id="data" required />
+            </div>
+            <div class="form-group">
+              <label>Tipo de Mercadoria</label>
+              <input type="text" id="tipo" placeholder="Ex: Hortifrutti" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hora Início</label>
+              <input type="time" id="horaini" required />
+            </div>
+            <div class="form-group">
+              <label>Duração (min)</label>
+              <input type="number" id="tempo" min="15" step="15" value="30" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hora Fim (calculado)</label>
+              <input type="time" id="horafim" readonly />
+            </div>
+            <div class="form-group">
+              <label>Volume</label>
+              <select id="volume" required>
+                <option value="Pequeno">Pequeno</option>
+                <option value="Médio" selected>Médio</option>
+                <option value="Grande">Grande</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
-            <label>Tipo de Mercadoria</label>
-            <input type="text" id="tipo" required />
+            <label>Observações</label>
+            <textarea id="obs" rows="3" placeholder="Informações adicionais..."></textarea>
           </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Hora Início</label>
-            <input type="time" id="horaini" required />
+          <div id="msg-form"></div>
+          <div style="display:flex;gap:10px;">
+            <button type="submit" class="btn btn-primary" style="flex:1;">Solicitar Agendamento</button>
+            <button type="button" class="btn btn-secondary" onclick="toggleForm()" style="flex:1;">Cancelar</button>
           </div>
-          <div class="form-group">
-            <label>Duração (min)</label>
-            <input type="number" id="tempo" min="15" step="15" value="30" required />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Hora Fim</label>
-            <input type="time" id="horafim" readonly />
-          </div>
-          <div class="form-group">
-            <label>Volume</label>
-            <select id="volume" required>
-              <option value="Pequeno">Pequeno</option>
-              <option value="Médio" selected>Médio</option>
-              <option value="Grande">Grande</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Observações</label>
-          <textarea id="obs" rows="3"></textarea>
-        </div>
-
-        <div id="msg-form"></div>
-        <div style="display:flex;gap:10px;">
-          <button type="submit" class="btn btn-primary" style="flex:1;">Agendar</button>
-          <button type="button" class="btn btn-secondary" onclick="toggleForm()" style="flex:1;">Cancelar</button>
-        </div>
-      </form>
+        </form>
+      </div>
 
       <div id="lista"></div>
     </div>
@@ -150,18 +95,20 @@
     <!-- ALTERAR SENHA -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleSenha()">
-        <h2 style="font-size:18px;font-weight:600;">Alterar Senha</h2>
-        <span id="senha-toggle-icon" style="font-size:20px;color:#6b7280;">﹢</span>
+        <h2 class="card-title">Alterar Senha</h2>
+        <span id="senha-toggle-icon" style="font-size:18px;color:var(--muted);">﹢</span>
       </div>
       <div id="form-senha-wrap" style="display:none;margin-top:20px;">
         <div id="msg-senha"></div>
-        <div class="form-group">
-          <label>Senha Atual</label>
-          <input type="password" id="senha-atual" placeholder="••••••••" />
-        </div>
-        <div class="form-group">
-          <label>Nova Senha</label>
-          <input type="password" id="nova-senha" placeholder="Mínimo 8 caracteres" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Senha Atual</label>
+            <input type="password" id="senha-atual" placeholder="••••••••" />
+          </div>
+          <div class="form-group">
+            <label>Nova Senha</label>
+            <input type="password" id="nova-senha" placeholder="Mínimo 8 caracteres" />
+          </div>
         </div>
         <div class="form-group">
           <label>Confirmar Nova Senha</label>
@@ -181,6 +128,7 @@
       fornecedor = verificarLoginFornecedor();
       if (fornecedor) {
         document.getElementById('nome-fornecedor').textContent = fornecedor.nome_empresa;
+        document.getElementById('user-initial').textContent = fornecedor.nome_empresa.charAt(0);
         document.getElementById('data').min = new Date().toISOString().split('T')[0];
         carregarAgendamentos();
         configurarCalculo();
@@ -191,7 +139,7 @@
       const form = document.getElementById('form-agend');
       form.style.display = form.style.display === 'none' || form.style.display === '' ? 'block' : 'none';
       if (form.style.display === 'none') {
-        form.reset();
+        form.querySelector('form').reset();
         document.getElementById('horafim').value = '';
         document.getElementById('msg-form').innerHTML = '';
       }
@@ -235,7 +183,6 @@
         agendamentos = await res.json();
         renderizar();
       } catch (err) {
-        console.error('Erro:', err);
         mostrarErro('msg', 'Erro ao carregar agendamentos. O servidor pode estar iniciando — tente novamente.');
       }
     }
@@ -260,32 +207,32 @@
       let lista = '';
 
       if (pend.length > 0) {
-        lista += '<h3 style="color:var(--warning);margin-bottom:12px;font-weight:600;">⏳ Pendentes</h3>';
+        lista += '<div class="section-label">⏳ Pendentes</div>';
         pend.forEach(ag => { lista += cardFornecedor(ag, hoje); });
       }
-
       if (apr.length > 0) {
-        lista += '<h3 style="color:var(--success);margin-top:20px;margin-bottom:12px;font-weight:600;">✅ Aprovados</h3>';
+        lista += '<div class="section-label">✅ Aprovados</div>';
         apr.forEach(ag => { lista += cardFornecedor(ag, hoje); });
       }
-
       if (rec.length > 0) {
-        lista += '<h3 style="color:var(--danger);margin-top:20px;margin-bottom:12px;font-weight:600;">❌ Recusados</h3>';
+        lista += '<div class="section-label">❌ Recusados</div>';
         rec.forEach(ag => { lista += cardFornecedor(ag, hoje); });
       }
 
       document.getElementById('lista').innerHTML = lista ||
-        '<p style="text-align:center;color:#6b7280;padding:20px;">Sem agendamentos futuros</p>';
+        `<div style="text-align:center;padding:40px;color:var(--muted);">
+          <div style="font-size:32px;margin-bottom:10px;">📭</div>
+          <p style="font-size:14px;font-weight:500;">Nenhum agendamento futuro</p>
+          <p style="font-size:13px;margin-top:4px;">Clique em "+ Novo" para solicitar um agendamento</p>
+        </div>`;
     }
 
     function cardFornecedor(ag, hoje) {
-      const cssClass = `ag-card ag-card-${ag.status.toLowerCase()}`;
-
       let botoes = '';
       if (ag.status === 'Pendente') {
         botoes = `
           <button class="btn btn-warning" onclick="toggleReagendar(${ag.id})" style="width:auto;font-size:12px;padding:6px 12px;">Reagendar</button>
-          <button class="btn btn-danger" onclick="cancelarAgendamento(${ag.id})" style="width:auto;font-size:12px;padding:6px 12px;">Cancelar</button>
+          <button class="btn btn-danger"  onclick="cancelarAgendamento(${ag.id})" style="width:auto;font-size:12px;padding:6px 12px;">Cancelar</button>
         `;
       } else if (ag.status === 'Recusado') {
         botoes = `
@@ -295,40 +242,31 @@
 
       const reagendarForm = (ag.status === 'Pendente' || ag.status === 'Recusado') ? `
         <div class="reagendar-form" id="reagendar-${ag.id}">
-          <p style="font-size:12px;font-weight:600;margin-bottom:10px;color:#92400e;">⚡ Propor novo horário (voltará para análise):</p>
+          <p>⚡ Propor novo horário — voltará para análise</p>
           <div class="reagendar-fields">
-            <div>
-              <label>Data</label>
-              <input type="date" id="rd-data-${ag.id}" min="${hoje}" />
-            </div>
-            <div>
-              <label>Hora Início</label>
-              <input type="time" id="rd-hora-${ag.id}" />
-            </div>
-            <div>
-              <label>Duração (min)</label>
-              <input type="number" id="rd-tempo-${ag.id}" min="15" step="15" value="${ag.tempo_estimado || 30}" />
-            </div>
+            <div><label>Data</label><input type="date" id="rd-data-${ag.id}" min="${hoje}" /></div>
+            <div><label>Hora Início</label><input type="time" id="rd-hora-${ag.id}" /></div>
+            <div><label>Duração (min)</label><input type="number" id="rd-tempo-${ag.id}" min="15" step="15" value="${ag.tempo_estimado || 30}" /></div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button onclick="reagendar(${ag.id})" class="btn btn-warning" style="width:auto;font-size:13px;padding:6px 14px;">Confirmar</button>
-            <button onclick="toggleReagendar(${ag.id})" class="btn btn-secondary" style="width:auto;font-size:13px;padding:6px 14px;">Cancelar</button>
+            <button onclick="reagendar(${ag.id})" class="btn btn-warning" style="width:auto;font-size:12px;padding:6px 14px;">Confirmar</button>
+            <button onclick="toggleReagendar(${ag.id})" class="btn btn-secondary" style="width:auto;font-size:12px;padding:6px 14px;">Cancelar</button>
           </div>
         </div>
       ` : '';
 
       return `
-        <div class="${cssClass}">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div class="ag-card ag-card-${ag.status.toLowerCase()}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
             <div>
-              <h4 style="font-weight:600;margin-bottom:4px;">${ag.tipo_mercadoria}</h4>
-              <p style="font-size:13px;color:#6b7280;">${formatarData(ag.data_entrega)} &nbsp;·&nbsp; ${ag.horario_inicio} - ${ag.horario_fim}</p>
-              <p style="font-size:13px;color:#6b7280;margin-top:2px;">Volume: ${ag.volume}</p>
-              ${ag.observacoes ? `<p style="font-size:12px;color:#9ca3af;margin-top:4px;">${ag.observacoes}</p>` : ''}
+              <div class="ag-title">${ag.tipo_mercadoria}</div>
+              <div class="ag-row">${formatarData(ag.data_entrega)} &nbsp;·&nbsp; ${ag.horario_inicio} — ${ag.horario_fim}</div>
+              <div class="ag-row"><strong>Volume:</strong> ${ag.volume}</div>
+              ${ag.observacoes ? `<div class="ag-row" style="margin-top:4px;font-size:12px;color:var(--faint);">${ag.observacoes}</div>` : ''}
             </div>
             <span class="status-badge badge-${ag.status.toLowerCase()}">${ag.status}</span>
           </div>
-          ${botoes ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${botoes}</div>` : ''}
+          ${botoes ? `<div class="ag-actions">${botoes}</div>` : ''}
           ${reagendarForm}
         </div>
       `;
@@ -340,97 +278,59 @@
     }
 
     async function reagendar(id) {
-      const data = document.getElementById(`rd-data-${id}`).value;
-      const hora = document.getElementById(`rd-hora-${id}`).value;
+      const data  = document.getElementById(`rd-data-${id}`).value;
+      const hora  = document.getElementById(`rd-hora-${id}`).value;
       const tempo = parseInt(document.getElementById(`rd-tempo-${id}`).value);
-
-      if (!data || !hora || !tempo) {
-        mostrarErro('msg', 'Preencha data, hora início e duração para reagendar.');
-        return;
-      }
-
+      if (!data || !hora || !tempo) { mostrarErro('msg', 'Preencha data, hora e duração.'); return; }
       const [h, m] = hora.split(':').map(Number);
       const total = h * 60 + m + tempo;
       const fim = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-
       const v = validarHorarioBloqueado(data, hora, fim);
-      if (v.bloqueado) {
-        mostrarErro('msg', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`);
-        return;
-      }
-
+      if (v.bloqueado) { mostrarErro('msg', `❌ Horário bloqueado: ${v.motivo} (${v.periodo})`); return; }
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/reagendar`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data_entrega: data, horario_inicio: hora, horario_fim: fim, tempo_estimado: tempo })
         });
         const resultado = await res.json();
-        if (res.ok) {
-          mostrarSucesso('msg', 'Reagendado! Aguardando nova aprovação.');
-          carregarAgendamentos();
-        } else {
-          mostrarErro('msg', resultado.erro || 'Erro ao reagendar');
-        }
-      } catch (err) {
-        mostrarErro('msg', 'Erro de conexão ao reagendar');
-      }
+        if (res.ok) { mostrarSucesso('msg', 'Reagendado! Aguardando aprovação.'); carregarAgendamentos(); }
+        else { mostrarErro('msg', resultado.erro || 'Erro ao reagendar'); }
+      } catch { mostrarErro('msg', 'Erro de conexão'); }
     }
 
     async function cancelarAgendamento(id) {
       if (confirm('Cancelar este agendamento?')) {
         try {
           const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}`, { method: 'DELETE' });
-          if (res.ok) {
-            mostrarSucesso('msg', 'Agendamento cancelado.');
-            carregarAgendamentos();
-          } else {
-            const resultado = await res.json();
-            mostrarErro('msg', resultado.erro || 'Erro ao cancelar');
-          }
-        } catch (err) {
-          mostrarErro('msg', 'Erro de conexão ao cancelar');
-        }
+          if (res.ok) { mostrarSucesso('msg', 'Agendamento cancelado.'); carregarAgendamentos(); }
+          else { const r = await res.json(); mostrarErro('msg', r.erro || 'Erro ao cancelar'); }
+        } catch { mostrarErro('msg', 'Erro de conexão'); }
       }
     }
 
     async function criarAgendamento(e) {
       e.preventDefault();
-
-      const data = document.getElementById('data').value;
+      const data   = document.getElementById('data').value;
       const inicio = document.getElementById('horaini').value;
-      const tempo = document.getElementById('tempo').value;
-      const tipo = document.getElementById('tipo').value;
-      const volume = document.getElementById('volume').value;
-      const obs = document.getElementById('obs').value;
-
+      const tempo  = document.getElementById('tempo').value;
       const [h, m] = inicio.split(':').map(Number);
       const totalMin = h * 60 + m + parseInt(tempo);
       const fim = `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
-
       const v = validarHorarioBloqueado(data, inicio, fim);
-      if (v.bloqueado) {
-        mostrarErro('msg-form', `❌ Não é possível agendar: ${v.motivo} (${v.periodo})`);
-        return;
-      }
-
+      if (v.bloqueado) { mostrarErro('msg-form', `❌ Não é possível agendar: ${v.motivo} (${v.periodo})`); return; }
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fornecedor_id: fornecedor.id,
-            data_entrega: data,
-            horario_inicio: inicio,
-            horario_fim: fim,
-            tipo_mercadoria: tipo,
-            volume: volume,
+            data_entrega: data, horario_inicio: inicio, horario_fim: fim,
+            tipo_mercadoria: document.getElementById('tipo').value,
+            volume: document.getElementById('volume').value,
             tempo_estimado: parseInt(tempo),
-            observacoes: obs,
+            observacoes: document.getElementById('obs').value,
             status: 'Pendente'
           })
         });
-
         const resultado = await res.json();
         if (res.ok) {
           mostrarSucesso('msg', 'Agendamento solicitado! Aguardando aprovação.');
@@ -439,10 +339,7 @@
         } else {
           mostrarErro('msg-form', resultado.erro || 'Erro ao criar agendamento');
         }
-      } catch (err) {
-        console.error('Erro:', err);
-        mostrarErro('msg-form', 'Erro de conexão com servidor');
-      }
+      } catch { mostrarErro('msg-form', 'Erro de conexão'); }
     }
 
     function toggleSenha() {
@@ -461,26 +358,14 @@
 
     async function alterarSenha() {
       const senhaAtual = document.getElementById('senha-atual').value;
-      const novaSenha = document.getElementById('nova-senha').value;
-      const confirmar = document.getElementById('confirmar-senha').value;
-
-      if (!senhaAtual || !novaSenha || !confirmar) {
-        mostrarErro('msg-senha', 'Preencha todos os campos.');
-        return;
-      }
-      if (novaSenha.length < 8) {
-        mostrarErro('msg-senha', 'Nova senha deve ter no mínimo 8 caracteres.');
-        return;
-      }
-      if (novaSenha !== confirmar) {
-        mostrarErro('msg-senha', 'Nova senha e confirmação não coincidem.');
-        return;
-      }
-
+      const novaSenha  = document.getElementById('nova-senha').value;
+      const confirmar  = document.getElementById('confirmar-senha').value;
+      if (!senhaAtual || !novaSenha || !confirmar) { mostrarErro('msg-senha', 'Preencha todos os campos.'); return; }
+      if (novaSenha.length < 8) { mostrarErro('msg-senha', 'Nova senha deve ter mínimo 8 caracteres.'); return; }
+      if (novaSenha !== confirmar) { mostrarErro('msg-senha', 'As senhas não coincidem.'); return; }
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/auth/fornecedor/alterar-senha`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fornecedor_id: fornecedor.id, senha_atual: senhaAtual, nova_senha: novaSenha })
         });
         const resultado = await res.json();
@@ -492,9 +377,7 @@
         } else {
           mostrarErro('msg-senha', resultado.erro || 'Erro ao alterar senha');
         }
-      } catch (err) {
-        mostrarErro('msg-senha', 'Erro de conexão');
-      }
+      } catch { mostrarErro('msg-senha', 'Erro de conexão'); }
     }
   </script>
 </body>

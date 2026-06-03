@@ -113,15 +113,14 @@ function logout(tipo) {
 // DARK MODE
 // ===========================
 function toggleDarkMode() {
-  const darkMode = !JSON.parse(localStorage.getItem(CONFIG.STORAGE.DARK_MODE) || 'false');
-  localStorage.setItem(CONFIG.STORAGE.DARK_MODE, darkMode);
-  document.body.classList.toggle('dark-mode');
+  const isNowLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem(CONFIG.STORAGE.DARK_MODE, isNowLight ? 'false' : 'true');
 }
 
 function carregarDarkMode() {
-  const darkMode = JSON.parse(localStorage.getItem(CONFIG.STORAGE.DARK_MODE) || 'false');
-  if (darkMode) {
-    document.body.classList.add('dark-mode');
+  const stored = localStorage.getItem(CONFIG.STORAGE.DARK_MODE);
+  if (stored === 'false') {
+    document.body.classList.add('light-mode');
   }
 }
 
