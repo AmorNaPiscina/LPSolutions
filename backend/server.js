@@ -133,6 +133,46 @@ function fmtData(d) {
 }
 
 // ===========================
+// WHATSAPP (TWILIO)
+// ===========================
+let twilioClient = null;
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+  twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  console.log('📱 WhatsApp (Twilio) configurado');
+} else {
+  console.warn('⚠️  Twilio não configurado — WhatsApp desativado');
+}
+
+function normalizarTelefone(tel) {
+  const digits = tel.replace(/\D/g, '');
+  if (digits.startsWith('55') && digits.length >= 12) return `+${digits}`;
+  return `+55${digits}`;
+}
+
+async function enviarWhatsApp(telefone, mensagem) {
+  if (!twilioClient) return;
+  try {
+    const from = `whatsapp:${process.env.TWILIO_WHATSAPP_FROM || '+14155238886'}`;
+    const to   = `whatsapp:${normalizarTelefone(telefone)}`;
+    await twilioClient.messages.create({ from, to, body: mensagem });
+    console.log(`📱 WhatsApp enviado → ${to}`);
+  } catch (err) {
+    console.error('❌ Erro ao enviar WhatsApp:', err.message);
+  }
+}
+
+async function whatsAppFornecedor(fornecedor_id, mensagem) {
+  try {
+    const r = await pool.query('SELECT telefone FROM fornecedores WHERE id = $1', [fornecedor_id]);
+    if (r.rows.length > 0 && r.rows[0].telefone) {
+      enviarWhatsApp(r.rows[0].telefone, mensagem);
+    }
+  } catch (err) {
+    console.error('❌ Erro ao buscar telefone:', err.message);
+  }
+}
+
+// ===========================
 // FUNÇÃO: LIMPAR AGENDAMENTOS EXPIRADOS
 // ===========================
 async function limparAgendamentosExpirados() {
@@ -308,6 +348,9 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
         `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`
       ])
     );
+    whatsAppFornecedor(ag.fornecedor_id,
+      `✅ *AgendaMercado*\n\nSeu agendamento para *${fmtData(ag.data_entrega)}* às *${ag.horario_inicio}* foi confirmado!`
+    );
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -398,6 +441,9 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
         `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
         `Aguardando aprovação do recebedor.`
       ])
+    );
+    whatsAppFornecedor(ag.fornecedor_id,
+      `⚡ *AgendaMercado*\n\nSeu agendamento foi reagendado para *${fmtData(ag.data_entrega)}* às *${ag.horario_inicio}*. Aguardando confirmação.`
     );
   } catch (err) {
     res.status(500).json({ erro: err.message });
