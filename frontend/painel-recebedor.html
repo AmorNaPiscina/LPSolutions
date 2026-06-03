@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel de Receção - AgendaMercado</title>
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header class="header">
@@ -27,6 +28,28 @@
   <div class="container">
     <div id="msg"></div>
     <div class="stats" id="stats"></div>
+
+    <!-- RELATÓRIOS -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Relatórios</h2>
+        <button class="btn btn-ghost" onclick="carregarRelatorios()" style="width:auto;padding:6px 12px;font-size:12px;">↻ Atualizar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;align-items:start;">
+        <div>
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px;">Status Geral</p>
+          <div style="max-width:220px;margin:0 auto;"><canvas id="chart-status"></canvas></div>
+        </div>
+        <div>
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px;">Por Dia da Semana</p>
+          <canvas id="chart-dias"></canvas>
+        </div>
+        <div>
+          <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px;">Últimos 6 Meses</p>
+          <canvas id="chart-meses"></canvas>
+        </div>
+      </div>
+    </div>
 
     <!-- CRIAR AGENDAMENTO -->
     <div class="card">
@@ -163,6 +186,7 @@
         document.getElementById('data-admin').min = new Date().toISOString().split('T')[0];
         carregarAgendamentos();
         carregarFornecedores();
+        carregarRelatorios();
         configurarCalculo();
       }
     });
@@ -220,6 +244,90 @@
       }
     }
 
+    // ─── CHARTS ──────────────────────────────────────
+    let charts = {};
+
+    async function carregarRelatorios() {
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/relatorios`);
+        if (!res.ok) return;
+        const dados = await res.json();
+        renderizarCharts(dados);
+      } catch (err) {
+        console.error('Erro relatórios:', err);
+      }
+    }
+
+    function getChartDefaults() {
+      const light = document.body.classList.contains('light-mode');
+      return {
+        grid:  light ? 'rgba(0,0,0,0.06)'  : 'rgba(255,255,255,0.05)',
+        tick:  light ? '#5a5a72'            : '#8e8ea8',
+        font:  { family: 'Inter', size: 11 }
+      };
+    }
+
+    function renderizarCharts(dados) {
+      const c = getChartDefaults();
+      const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+      // Donut — status
+      if (charts.status) charts.status.destroy();
+      charts.status = new Chart(document.getElementById('chart-status'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Aprovados','Pendentes','Recusados'],
+          datasets: [{ data: [
+            dados.por_status['Aprovado'] || 0,
+            dados.por_status['Pendente'] || 0,
+            dados.por_status['Recusado'] || 0
+          ], backgroundColor: ['#22c55e','#f59e0b','#f43f5e'], borderWidth: 0, hoverOffset: 4 }]
+        },
+        options: {
+          cutout: '68%',
+          plugins: { legend: { position:'bottom', labels:{ color: c.tick, font: c.font, padding:14, boxWidth:10 } } }
+        }
+      });
+
+      // Bar — dias da semana
+      if (charts.dias) charts.dias.destroy();
+      charts.dias = new Chart(document.getElementById('chart-dias'), {
+        type: 'bar',
+        data: {
+          labels: dias,
+          datasets: [{ data: dados.por_dia, backgroundColor:'rgba(99,102,241,0.75)', borderRadius:4, borderSkipped:false }]
+        },
+        options: {
+          plugins: { legend:{ display:false } },
+          scales: {
+            x: { grid:{ color:c.grid }, ticks:{ color:c.tick, font:c.font } },
+            y: { grid:{ color:c.grid }, ticks:{ color:c.tick, font:c.font, stepSize:1 }, beginAtZero:true }
+          }
+        }
+      });
+
+      // Bar — meses
+      if (charts.meses) charts.meses.destroy();
+      const mesesLabels = dados.por_mes.map(m => {
+        const [ano, mes] = m.mes.split('-');
+        return new Date(ano, mes-1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' });
+      });
+      charts.meses = new Chart(document.getElementById('chart-meses'), {
+        type: 'bar',
+        data: {
+          labels: mesesLabels.length ? mesesLabels : ['Sem dados'],
+          datasets: [{ data: dados.por_mes.map(m => m.total), backgroundColor:'rgba(14,165,233,0.75)', borderRadius:4, borderSkipped:false }]
+        },
+        options: {
+          plugins: { legend:{ display:false } },
+          scales: {
+            x: { grid:{ color:c.grid }, ticks:{ color:c.tick, font:c.font } },
+            y: { grid:{ color:c.grid }, ticks:{ color:c.tick, font:c.font, stepSize:1 }, beginAtZero:true }
+          }
+        }
+      });
+    }
+
     function renderizar() {
       const pendentes = agendamentos.filter(a => a.status === 'Pendente').length;
       const aprovados = agendamentos.filter(a => a.status === 'Aprovado').length;
@@ -257,7 +365,7 @@
       if (ag.status === 'Pendente') {
         botoes = `
           <button class="btn btn-success" onclick="aprovar(${ag.id})" style="width:auto;">Aprovar</button>
-          <button class="btn btn-danger"  onclick="recusar(${ag.id})"  style="width:auto;">Recusar</button>
+          <button class="btn btn-danger"  onclick="toggleRecusa(${ag.id})" style="width:auto;">Recusar</button>
           <button class="btn btn-warning" onclick="toggleReagendar(${ag.id})" style="width:auto;">Reagendar</button>
         `;
       } else {
@@ -277,7 +385,18 @@
           <div class="ag-row"><strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}</div>
           <div class="ag-row"><strong>Contato:</strong> ${ag.nome_contato || 'N/A'} · ${ag.telefone || 'N/A'}</div>
           ${ag.observacoes ? `<div class="ag-row" style="margin-top:4px;font-size:12px;color:var(--faint);">${ag.observacoes}</div>` : ''}
+          ${ag.motivo_recusa ? `<div class="ag-row" style="margin-top:8px;padding:8px 10px;background:var(--danger-bg);border-radius:6px;border:1px solid rgba(244,63,94,0.2);font-size:12px;color:var(--danger);"><strong>Motivo:</strong> ${ag.motivo_recusa}</div>` : ''}
           <div class="ag-actions">${botoes}</div>
+          <div class="reagendar-form" id="recusa-${ag.id}" style="border-color:rgba(244,63,94,0.3);">
+            <p style="color:var(--danger);">✕ Motivo da recusa (opcional)</p>
+            <div class="form-group" style="margin-bottom:10px;">
+              <textarea id="recusa-motivo-${ag.id}" rows="2" placeholder="Ex: Doca ocupada neste horário, limite de agendamentos atingido..." style="padding:8px 10px;background:var(--hi);border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);width:100%;font-family:inherit;resize:none;"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button onclick="confirmarRecusa(${ag.id})" class="btn btn-danger" style="width:auto;font-size:12px;padding:6px 14px;">Confirmar Recusa</button>
+              <button onclick="toggleRecusa(${ag.id})"   class="btn btn-secondary" style="width:auto;font-size:12px;padding:6px 14px;">Cancelar</button>
+            </div>
+          </div>
           <div class="reagendar-form" id="reagendar-${ag.id}">
             <p>⚡ Propor novo horário — voltará para Pendente</p>
             <div class="reagendar-fields">
@@ -376,27 +495,40 @@
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/aprovar`, { method: 'PUT' });
         const resultado = await res.json();
-        if (res.ok) { mostrarSucesso('msg', 'Agendamento aprovado!'); carregarAgendamentos(); }
+        if (res.ok) { mostrarSucesso('msg', 'Agendamento aprovado!'); carregarAgendamentos(); carregarRelatorios(); }
         else { mostrarErro('msg', resultado.erro || 'Erro ao aprovar'); }
       } catch { mostrarErro('msg', 'Erro de conexão'); }
     }
 
-    async function recusar(id) {
-      if (confirm('Recusar este agendamento?')) {
-        try {
-          const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/recusar`, { method: 'PUT' });
-          const resultado = await res.json();
-          if (res.ok) { mostrarSucesso('msg', 'Agendamento recusado.'); carregarAgendamentos(); }
-          else { mostrarErro('msg', resultado.erro || 'Erro ao recusar'); }
-        } catch { mostrarErro('msg', 'Erro de conexão'); }
-      }
+    function toggleRecusa(id) {
+      const el = document.getElementById(`recusa-${id}`);
+      el.style.display = el.style.display === 'none' || el.style.display === '' ? 'block' : 'none';
+    }
+
+    async function confirmarRecusa(id) {
+      const motivo = document.getElementById(`recusa-motivo-${id}`).value.trim();
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}/recusar`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ motivo })
+        });
+        const resultado = await res.json();
+        if (res.ok) {
+          mostrarSucesso('msg', 'Agendamento recusado.');
+          carregarAgendamentos();
+          carregarRelatorios();
+        } else {
+          mostrarErro('msg', resultado.erro || 'Erro ao recusar');
+        }
+      } catch { mostrarErro('msg', 'Erro de conexão'); }
     }
 
     async function cancelarAgendamento(id) {
       if (confirm('⚠️ Cancelar e remover este agendamento definitivamente?')) {
         try {
           const res = await fetch(`${CONFIG.API_URL}/api/agendamentos/${id}`, { method: 'DELETE' });
-          if (res.ok) { mostrarSucesso('msg', 'Agendamento cancelado.'); carregarAgendamentos(); }
+          if (res.ok) { mostrarSucesso('msg', 'Agendamento cancelado.'); carregarAgendamentos(); carregarRelatorios(); }
           else { const r = await res.json(); mostrarErro('msg', r.erro || 'Erro ao cancelar'); }
         } catch { mostrarErro('msg', 'Erro de conexão'); }
       }

@@ -32,6 +32,11 @@ const pool = new Pool({
 
 pool.on('error', (err) => console.error('Erro DB:', err));
 
+// Run once on startup — safe to re-run
+pool.query(`ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS motivo_recusa TEXT`)
+  .then(() => console.log('✅ Schema OK'))
+  .catch(err => console.error('❌ Migration error:', err.message));
+
 // ===========================
 // HELPER: VALIDAR HORÁRIO BLOQUEADO
 // ===========================
@@ -359,12 +364,14 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
 // Recusar
 app.put('/api/agendamentos/:id/recusar', async (req, res) => {
   try {
+    const { motivo } = req.body;
+
     const result = await pool.query(
       `UPDATE agendamentos
-       SET status = 'Recusado', atualizado_em = NOW()
+       SET status = 'Recusado', motivo_recusa = $2, atualizado_em = NOW()
        WHERE id = $1
        RETURNING *`,
-      [req.params.id]
+      [req.params.id, motivo || null]
     );
 
     if (result.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
@@ -380,7 +387,7 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
         `📅 <strong>Data solicitada:</strong> ${fmtData(ag.data_entrega)}`,
         `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
         `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
-        `Você pode propor um novo horário acessando o sistema.`
+        motivo ? `💬 <strong>Motivo:</strong> ${motivo}` : `Você pode propor um novo horário acessando o sistema.`
       ])
     );
   } catch (err) {
@@ -749,6 +756,41 @@ app.put('/api/auth/admin/perfil', async (req, res) => {
     res.json({ mensagem: 'Perfil atualizado', admin: result.rows[0] });
   } catch (err) {
     console.error('❌ Erro ao atualizar perfil admin:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ===========================
+// ROTAS: RELATÓRIOS
+// ===========================
+app.get('/api/relatorios', async (req, res) => {
+  try {
+    const [statusRes, diaRes, mesRes, horaRes] = await Promise.all([
+      pool.query(`SELECT status, COUNT(*) AS total FROM agendamentos GROUP BY status`),
+      pool.query(`SELECT EXTRACT(DOW FROM data_entrega)::int AS dia, COUNT(*) AS total FROM agendamentos GROUP BY dia ORDER BY dia`),
+      pool.query(`
+        SELECT TO_CHAR(data_entrega, 'YYYY-MM') AS mes, COUNT(*) AS total
+        FROM agendamentos
+        WHERE data_entrega >= NOW() - INTERVAL '6 months'
+        GROUP BY mes ORDER BY mes
+      `),
+      pool.query(`SELECT EXTRACT(HOUR FROM horario_inicio)::int AS hora, COUNT(*) AS total FROM agendamentos GROUP BY hora ORDER BY hora`)
+    ]);
+
+    const porStatus = {};
+    statusRes.rows.forEach(r => { porStatus[r.status] = parseInt(r.total); });
+
+    const porDia = new Array(7).fill(0);
+    diaRes.rows.forEach(r => { porDia[r.dia] = parseInt(r.total); });
+
+    res.json({
+      por_status: porStatus,
+      por_dia:    porDia,
+      por_mes:    mesRes.rows.map(r => ({ mes: r.mes, total: parseInt(r.total) })),
+      por_hora:   horaRes.rows.map(r => ({ hora: r.hora, total: parseInt(r.total) }))
+    });
+  } catch (err) {
+    console.error('❌ Erro relatórios:', err);
     res.status(500).json({ erro: err.message });
   }
 });
