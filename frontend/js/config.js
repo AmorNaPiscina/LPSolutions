@@ -45,36 +45,45 @@ function obterDiaSemana(data) {
 // ===========================
 function validarHorarioBloqueado(data, horaInicio, horaFim) {
   const dataObj = new Date(data + 'T00:00:00');
-  const diaSemana = dataObj.getDay();
-  
-  const horasSegundaQuinta = [
-    { diaSemana: 1, inicio: '10:00', fim: '12:00', motivo: 'Coleta no Ceasa' },
-    { diaSemana: 4, inicio: '10:00', fim: '12:00', motivo: 'Coleta no Ceasa' }
-  ];
+  const diaSemana = dataObj.getDay(); // 0=Dom, 6=Sab
 
-  for (const bloqueio of horasSegundaQuinta) {
-    if (diaSemana === bloqueio.diaSemana) {
-      const [h1, m1] = horaInicio.split(':').map(Number);
-      const [h2, m2] = horaFim.split(':').map(Number);
-      const [hBloqueio1, mBloqueio1] = bloqueio.inicio.split(':').map(Number);
-      const [hBloqueio2, mBloqueio2] = bloqueio.fim.split(':').map(Number);
-      
-      const inicioMin = h1 * 60 + m1;
-      const fimMin = h2 * 60 + m2;
-      const bloqueioInicioMin = hBloqueio1 * 60 + mBloqueio1;
-      const bloqueioFimMin = hBloqueio2 * 60 + mBloqueio2;
+  // Apenas segunda a sexta
+  if (diaSemana === 0 || diaSemana === 6) {
+    return { bloqueado: true, motivo: 'Atendimento apenas de segunda a sexta-feira', periodo: '' };
+  }
 
-      if (!(fimMin <= bloqueioInicioMin || inicioMin >= bloqueioFimMin)) {
-        return {
-          bloqueado: true,
-          motivo: bloqueio.motivo,
-          periodo: `${bloqueio.inicio} - ${bloqueio.fim}`
-        };
-      }
+  const [h1, m1] = horaInicio.split(':').map(Number);
+  const [h2, m2] = horaFim.split(':').map(Number);
+  const inicioMin = h1 * 60 + m1;
+  const fimMin    = h2 * 60 + m2;
+
+  // Janelas permitidas: 08:00–12:00 ou 14:00–17:00
+  const dentroManha = inicioMin >= 8 * 60  && fimMin <= 12 * 60;
+  const dentroTarde = inicioMin >= 14 * 60 && fimMin <= 17 * 60;
+
+  if (!dentroManha && !dentroTarde) {
+    return {
+      bloqueado: true,
+      motivo: 'Fora do horário de atendimento',
+      periodo: '08:00–12:00 ou 14:00–17:00'
+    };
+  }
+
+  // Ceasa: seg e qui, 10:00–12:00 bloqueado
+  if (diaSemana === 1 || diaSemana === 4) {
+    if (!(fimMin <= 10 * 60 || inicioMin >= 12 * 60)) {
+      return { bloqueado: true, motivo: 'Bloqueado — Coleta no Ceasa', periodo: '10:00–12:00' };
     }
   }
 
   return { bloqueado: false };
+}
+
+// Retorna true se a data for fim de semana (para bloquear o campo de data imediatamente)
+function ehFimDeSemana(dataStr) {
+  if (!dataStr) return false;
+  const dia = new Date(dataStr + 'T00:00:00').getDay();
+  return dia === 0 || dia === 6;
 }
 
 // ===========================

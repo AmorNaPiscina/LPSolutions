@@ -59,7 +59,8 @@
 
       <div style="background:var(--hi);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;">
         <div class="info-box">
-          <strong>⚠️ Horários Bloqueados:</strong> Segundas e Quintas das 10:00 às 12:00 (Coleta no Ceasa)
+          <strong>📅 Horário de atendimento:</strong> Segunda a Sexta — Manhã: 08:00–12:00 &nbsp;·&nbsp; Tarde: 14:00–17:00<br/>
+          <strong>⚠️ Ceasa:</strong> Segundas e Quintas, 10:00–12:00 bloqueado
         </div>
 
         <form id="form-criar" onsubmit="criarAgendamentoAdmin(event)">
@@ -82,11 +83,11 @@
           <div class="form-row">
             <div class="form-group">
               <label>Hora Início</label>
-              <input type="time" id="horaini-admin" required />
+              <input type="time" id="horaini-admin" min="08:00" max="17:00" required />
             </div>
             <div class="form-group">
               <label>Duração (min)</label>
-              <input type="number" id="tempo-admin" min="15" step="15" value="30" required />
+              <input type="number" id="tempo-admin" min="15" max="240" step="15" value="30" required />
             </div>
           </div>
           <div class="form-row">
@@ -217,7 +218,15 @@
       };
       document.getElementById('horaini-admin').addEventListener('change', calc);
       document.getElementById('tempo-admin').addEventListener('input', calc);
-      document.getElementById('data-admin').addEventListener('change', validarBloqueioAoDigitar);
+      document.getElementById('data-admin').addEventListener('change', () => {
+        const val = document.getElementById('data-admin').value;
+        if (ehFimDeSemana(val)) {
+          mostrarErro('msg-criar', '❌ Atendimento apenas de segunda a sexta-feira.');
+          document.getElementById('data-admin').value = '';
+        } else {
+          validarBloqueioAoDigitar();
+        }
+      });
       document.getElementById('horaini-admin').addEventListener('change', validarBloqueioAoDigitar);
     }
 

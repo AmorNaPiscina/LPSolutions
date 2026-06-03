@@ -39,7 +39,8 @@
         <h3 style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;">Novo Agendamento</h3>
 
         <div class="info-box">
-          <strong>⚠️ Horários Bloqueados:</strong> Segundas e Quintas das 10:00 às 12:00 (Coleta no Ceasa)
+          <strong>📅 Horário de atendimento:</strong> Segunda a Sexta — Manhã: 08:00–12:00 &nbsp;·&nbsp; Tarde: 14:00–17:00<br/>
+          <strong>⚠️ Ceasa:</strong> Segundas e Quintas, 10:00–12:00 bloqueado
         </div>
 
         <form onsubmit="criarAgendamento(event)">
@@ -56,11 +57,11 @@
           <div class="form-row">
             <div class="form-group">
               <label>Hora Início</label>
-              <input type="time" id="horaini" required />
+              <input type="time" id="horaini" min="08:00" max="17:00" required />
             </div>
             <div class="form-group">
               <label>Duração (min)</label>
-              <input type="number" id="tempo" min="15" step="15" value="30" required />
+              <input type="number" id="tempo" min="15" max="240" step="15" value="30" required />
             </div>
           </div>
           <div class="form-row">
@@ -189,7 +190,15 @@
       };
       document.getElementById('horaini').addEventListener('change', calc);
       document.getElementById('tempo').addEventListener('input', calc);
-      document.getElementById('data').addEventListener('change', validarBloqueio);
+      document.getElementById('data').addEventListener('change', () => {
+        const val = document.getElementById('data').value;
+        if (ehFimDeSemana(val)) {
+          mostrarErro('msg-form', '❌ Atendimento apenas de segunda a sexta-feira.');
+          document.getElementById('data').value = '';
+        } else {
+          validarBloqueio();
+        }
+      });
     }
 
     function validarBloqueio() {

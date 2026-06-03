@@ -42,30 +42,33 @@ pool.query(`ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS motivo_recusa TEXT
 // ===========================
 function validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim) {
   const data = new Date(data_entrega + 'T00:00:00');
-  const diaSemana = data.getDay();
+  const diaSemana = data.getDay(); // 0=Dom, 6=Sab
 
-  const bloqueios = [
-    { dia: 1, inicio: '10:00', fim: '12:00' },
-    { dia: 4, inicio: '10:00', fim: '12:00' }
-  ];
+  // Apenas segunda a sexta
+  if (diaSemana === 0 || diaSemana === 6) {
+    return { bloqueado: true, motivo: 'Atendimento apenas de segunda a sexta-feira' };
+  }
 
-  for (const bloqueio of bloqueios) {
-    if (diaSemana === bloqueio.dia) {
-      const [h1, m1] = horario_inicio.split(':').map(Number);
-      const [h2, m2] = horario_fim.split(':').map(Number);
-      const [hB1, mB1] = bloqueio.inicio.split(':').map(Number);
-      const [hB2, mB2] = bloqueio.fim.split(':').map(Number);
+  const [h1, m1] = horario_inicio.split(':').map(Number);
+  const [h2, m2] = horario_fim.split(':').map(Number);
+  const inicioMin = h1 * 60 + m1;
+  const fimMin    = h2 * 60 + m2;
 
-      const inicioMin = h1 * 60 + m1;
-      const fimMin = h2 * 60 + m2;
-      const bloqueioInicioMin = hB1 * 60 + mB1;
-      const bloqueioFimMin = hB2 * 60 + mB2;
+  // Janelas permitidas: 08:00–12:00 ou 14:00–17:00
+  const dentroManha = inicioMin >= 8 * 60  && fimMin <= 12 * 60;
+  const dentroTarde = inicioMin >= 14 * 60 && fimMin <= 17 * 60;
 
-      if (!(fimMin <= bloqueioInicioMin || inicioMin >= bloqueioFimMin)) {
-        return { bloqueado: true };
-      }
+  if (!dentroManha && !dentroTarde) {
+    return { bloqueado: true, motivo: 'Fora do horário de atendimento (08:00–12:00 ou 14:00–17:00)' };
+  }
+
+  // Ceasa: seg e qui, 10:00–12:00 bloqueado
+  if (diaSemana === 1 || diaSemana === 4) {
+    if (!(fimMin <= 10 * 60 || inicioMin >= 12 * 60)) {
+      return { bloqueado: true, motivo: 'Bloqueado — Coleta no Ceasa (10:00–12:00)' };
     }
   }
+
   return { bloqueado: false };
 }
 
