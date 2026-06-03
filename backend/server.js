@@ -527,7 +527,7 @@ app.post('/api/auth/fornecedor/login', async (req, res) => {
     );
 
     console.log('✅ Login fornecedor:', email);
-    res.json({ mensagem: 'OK', fornecedor: resultFornecedor.rows[0] });
+    res.json({ mensagem: 'OK', fornecedor: { ...resultFornecedor.rows[0], email: conta.email } });
   } catch (err) {
     console.error('❌ Erro login fornecedor:', err);
     res.status(500).json({ erro: err.message });
@@ -677,6 +677,78 @@ app.put('/api/auth/admin/alterar-senha', async (req, res) => {
     res.json({ mensagem: 'Senha alterada com sucesso' });
   } catch (err) {
     console.error('❌ Erro ao alterar senha admin:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Atualizar perfil fornecedor
+app.put('/api/auth/fornecedor/perfil', async (req, res) => {
+  try {
+    const { fornecedor_id, nome_empresa, nome_contato, telefone, email } = req.body;
+
+    if (!fornecedor_id || !nome_empresa || !nome_contato || !email) {
+      return res.status(400).json({ erro: 'Campos obrigatórios' });
+    }
+
+    const emailCheck = await pool.query(
+      'SELECT id FROM contas_fornecedores WHERE email = $1 AND fornecedor_id != $2',
+      [email, fornecedor_id]
+    );
+    if (emailCheck.rows.length > 0) return res.status(400).json({ erro: 'Este email já está em uso' });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const r = await client.query(
+        'UPDATE fornecedores SET nome_empresa=$1, nome_contato=$2, telefone=$3 WHERE id=$4 RETURNING *',
+        [nome_empresa, nome_contato, telefone, fornecedor_id]
+      );
+      if (r.rowCount === 0) { await client.query('ROLLBACK'); return res.status(404).json({ erro: 'Não encontrado' }); }
+
+      await client.query(
+        'UPDATE contas_fornecedores SET email=$1 WHERE fornecedor_id=$2',
+        [email, fornecedor_id]
+      );
+
+      await client.query('COMMIT');
+      console.log('✅ Perfil atualizado - fornecedor:', fornecedor_id);
+      res.json({ mensagem: 'Perfil atualizado', fornecedor: { ...r.rows[0], email } });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('❌ Erro ao atualizar perfil fornecedor:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Atualizar perfil admin
+app.put('/api/auth/admin/perfil', async (req, res) => {
+  try {
+    const { id, nome, email } = req.body;
+
+    if (!id || !nome || !email) return res.status(400).json({ erro: 'Campos obrigatórios' });
+
+    const emailCheck = await pool.query(
+      'SELECT id FROM usuarios WHERE email = $1 AND id != $2',
+      [email, id]
+    );
+    if (emailCheck.rows.length > 0) return res.status(400).json({ erro: 'Este email já está em uso' });
+
+    const result = await pool.query(
+      'UPDATE usuarios SET nome=$1, email=$2 WHERE id=$3 RETURNING id, nome, email',
+      [nome, email, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
+
+    console.log('✅ Perfil atualizado - admin:', id);
+    res.json({ mensagem: 'Perfil atualizado', admin: result.rows[0] });
+  } catch (err) {
+    console.error('❌ Erro ao atualizar perfil admin:', err);
     res.status(500).json({ erro: err.message });
   }
 });

@@ -92,6 +92,36 @@
       <div id="lista"></div>
     </div>
 
+    <!-- EDITAR PERFIL -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="togglePerfil()">
+        <h2 class="card-title">Editar Perfil</h2>
+        <span id="perfil-toggle-icon" style="font-size:18px;color:var(--muted);">﹢</span>
+      </div>
+      <div id="form-perfil-wrap" style="display:none;margin-top:20px;">
+        <div id="msg-perfil"></div>
+        <div class="form-group">
+          <label>Nome da Empresa</label>
+          <input type="text" id="perfil-empresa" placeholder="Distribuidora XYZ Ltda." />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome do Contato</label>
+            <input type="text" id="perfil-contato" placeholder="João Silva" />
+          </div>
+          <div class="form-group">
+            <label>Telefone / WhatsApp</label>
+            <input type="tel" id="perfil-telefone" placeholder="(11) 99999-9999" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="perfil-email" placeholder="contato@empresa.com" />
+        </div>
+        <button class="btn btn-primary" onclick="salvarPerfil()" style="max-width:220px;">Salvar Alterações</button>
+      </div>
+    </div>
+
     <!-- ALTERAR SENHA -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleSenha()">
@@ -340,6 +370,50 @@
           mostrarErro('msg-form', resultado.erro || 'Erro ao criar agendamento');
         }
       } catch { mostrarErro('msg-form', 'Erro de conexão'); }
+    }
+
+    function togglePerfil() {
+      const wrap = document.getElementById('form-perfil-wrap');
+      const icon = document.getElementById('perfil-toggle-icon');
+      const open = wrap.style.display === 'none' || wrap.style.display === '';
+      wrap.style.display = open ? 'block' : 'none';
+      icon.textContent = open ? '﹣' : '﹢';
+      if (open) {
+        document.getElementById('perfil-empresa').value  = fornecedor.nome_empresa || '';
+        document.getElementById('perfil-contato').value  = fornecedor.nome_contato  || '';
+        document.getElementById('perfil-telefone').value = fornecedor.telefone       || '';
+        document.getElementById('perfil-email').value    = fornecedor.email          || '';
+      }
+    }
+
+    async function salvarPerfil() {
+      const nome_empresa = document.getElementById('perfil-empresa').value.trim();
+      const nome_contato = document.getElementById('perfil-contato').value.trim();
+      const telefone     = document.getElementById('perfil-telefone').value.trim();
+      const email        = document.getElementById('perfil-email').value.trim();
+
+      if (!nome_empresa || !nome_contato || !email) {
+        mostrarErro('msg-perfil', 'Empresa, contato e email são obrigatórios.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/auth/fornecedor/perfil`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fornecedor_id: fornecedor.id, nome_empresa, nome_contato, telefone, email })
+        });
+        const resultado = await res.json();
+        if (res.ok) {
+          fornecedor = { ...fornecedor, nome_empresa, nome_contato, telefone, email };
+          salvarDados(CONFIG.STORAGE.FORNECEDOR, fornecedor);
+          document.getElementById('nome-fornecedor').textContent = nome_empresa;
+          document.getElementById('user-initial').textContent = nome_empresa.charAt(0);
+          mostrarSucesso('msg-perfil', 'Perfil atualizado com sucesso!');
+        } else {
+          mostrarErro('msg-perfil', resultado.erro || 'Erro ao atualizar perfil');
+        }
+      } catch { mostrarErro('msg-perfil', 'Erro de conexão'); }
     }
 
     function toggleSenha() {
