@@ -181,6 +181,30 @@ async function whatsAppFornecedor(fornecedor_id, mensagem) {
 }
 
 // ===========================
+// HELPER: VERIFICAR CONFLITO DE HORÁRIO
+// ===========================
+// Returns the conflicting row if [horario_inicio, horario_fim) overlaps any Aprovado
+// appointment on the same date. Pass excluirId to ignore a specific row (for reagendar).
+async function verificarConflito(data_entrega, horario_inicio, horario_fim, excluirId = null) {
+  const params = [data_entrega, horario_inicio, horario_fim];
+  let sql = `
+    SELECT id,
+           horario_inicio::text AS horario_inicio,
+           horario_fim::text    AS horario_fim
+    FROM agendamentos
+    WHERE data_entrega = $1
+      AND status = 'Aprovado'
+      AND horario_inicio < $3
+      AND horario_fim    > $2
+  `;
+  if (excluirId) { sql += ' AND id != $4'; params.push(excluirId); }
+  const r = await pool.query(sql, params);
+  return r.rows[0] || null;
+}
+
+function fmtHora(t) { return String(t).slice(0, 5); }
+
+// ===========================
 // FUNÇÃO: LIMPAR AGENDAMENTOS EXPIRADOS
 // ===========================
 async function limparAgendamentosExpirados() {
@@ -278,9 +302,14 @@ app.post('/api/agendamentos', async (req, res) => {
 
     const check = validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim);
     if (check.bloqueado) {
-      return res.status(400).json({
-        erro: 'Horário bloqueado - Coleta no Ceasa (10:00-12:00)',
-        horarioBloqueado: true
+      return res.status(400).json({ erro: check.motivo, horarioBloqueado: true });
+    }
+
+    const conflito = await verificarConflito(data_entrega, horario_inicio, horario_fim);
+    if (conflito) {
+      return res.status(409).json({
+        erro: `Horário indisponível: já existe um agendamento aprovado das ${fmtHora(conflito.horario_inicio)} às ${fmtHora(conflito.horario_fim)} nesta data.`,
+        conflito: true
       });
     }
 
@@ -333,6 +362,21 @@ app.post('/api/agendamentos', async (req, res) => {
 // Aprovar
 app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
   try {
+    const atual = await pool.query(
+      'SELECT data_entrega, horario_inicio::text, horario_fim::text FROM agendamentos WHERE id = $1',
+      [req.params.id]
+    );
+    if (atual.rowCount === 0) return res.status(404).json({ erro: 'Não encontrado' });
+
+    const { data_entrega, horario_inicio, horario_fim } = atual.rows[0];
+    const conflito = await verificarConflito(data_entrega, horario_inicio, horario_fim, req.params.id);
+    if (conflito) {
+      return res.status(409).json({
+        erro: `Não é possível aprovar: o horário das ${fmtHora(conflito.horario_inicio)} às ${fmtHora(conflito.horario_fim)} já está ocupado por outro agendamento aprovado.`,
+        conflito: true
+      });
+    }
+
     const result = await pool.query(
       `UPDATE agendamentos
        SET status = 'Aprovado', atualizado_em = NOW()
@@ -409,9 +453,14 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
 
     const check = validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim);
     if (check.bloqueado) {
-      return res.status(400).json({
-        erro: 'Horário bloqueado - Coleta no Ceasa (10:00-12:00)',
-        horarioBloqueado: true
+      return res.status(400).json({ erro: check.motivo, horarioBloqueado: true });
+    }
+
+    const conflito = await verificarConflito(data_entrega, horario_inicio, horario_fim, req.params.id);
+    if (conflito) {
+      return res.status(409).json({
+        erro: `Horário indisponível: já existe um agendamento aprovado das ${fmtHora(conflito.horario_inicio)} às ${fmtHora(conflito.horario_fim)} nesta data.`,
+        conflito: true
       });
     }
 
