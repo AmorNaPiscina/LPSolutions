@@ -16,7 +16,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.CORS_ORIGIN || 'https://lp-solutions.vercel.app',
   credentials: true
 }));
 app.use(bodyParser.json());
@@ -38,9 +38,28 @@ pool.query(`ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS motivo_recusa TEXT
   .catch(err => console.error('❌ Migration error:', err.message));
 
 // ===========================
+// EMAIL ESCAPING (prevents HTML injection in outbound emails)
+// ===========================
+function escapeHtmlEmail(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ===========================
 // HELPER: VALIDAR HORÁRIO BLOQUEADO
 // ===========================
 function validarHorarioBloqueadoServer(data_entrega, horario_inicio, horario_fim) {
+  if (!data_entrega || !horario_inicio || !horario_fim) {
+    return { bloqueado: true, motivo: 'Dados de horário inválidos' };
+  }
+  const TIME_RE = /^\d{2}:\d{2}/;
+  if (!TIME_RE.test(horario_inicio) || !TIME_RE.test(horario_fim)) {
+    return { bloqueado: true, motivo: 'Formato de horário inválido' };
+  }
   const data = new Date(data_entrega + 'T00:00:00');
   const diaSemana = data.getDay(); // 0=Dom, 6=Sab
 
@@ -268,7 +287,7 @@ app.get('/api/agendamentos', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('❌ Erro:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -288,7 +307,7 @@ app.get('/api/fornecedor/:id/agendamentos', async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -297,6 +316,20 @@ app.post('/api/agendamentos', async (req, res) => {
   try {
     const { fornecedor_id, data_entrega, horario_inicio, horario_fim,
             tipo_mercadoria, volume, tempo_estimado, observacoes, status } = req.body;
+
+    if (!fornecedor_id || !data_entrega || !horario_inicio || !horario_fim || !tipo_mercadoria || !volume) {
+      return res.status(400).json({ erro: 'Campos obrigatórios não preenchidos' });
+    }
+    const VOLUME_VALIDO = ['Pequeno', 'Médio', 'Grande'];
+    if (!VOLUME_VALIDO.includes(volume)) {
+      return res.status(400).json({ erro: 'Volume inválido' });
+    }
+    if (typeof tipo_mercadoria !== 'string' || tipo_mercadoria.length > 100) {
+      return res.status(400).json({ erro: 'Tipo de mercadoria inválido (máx. 100 caracteres)' });
+    }
+    if (observacoes && (typeof observacoes !== 'string' || observacoes.length > 500)) {
+      return res.status(400).json({ erro: 'Observações muito longas (máx. 500 caracteres)' });
+    }
 
     console.log('📝 Criando agendamento:', { fornecedor_id, data_entrega, horario_inicio });
 
@@ -332,12 +365,12 @@ app.post('/api/agendamentos', async (req, res) => {
     if (ag.status === 'Pendente') {
       // Fornecedor criou → avisa admin
       emailAdmin(
-        `[AgendaMercado] Novo agendamento pendente — ${nomeEmpresa}`,
+        `[AgendaMercado] Novo agendamento pendente — ${escapeHtmlEmail(nomeEmpresa)}`,
         templateEmail('Novo agendamento pendente', [
-          `<strong>${nomeEmpresa}</strong> solicitou um agendamento.`,
+          `<strong>${escapeHtmlEmail(nomeEmpresa)}</strong> solicitou um agendamento.`,
           `📅 <strong>Data:</strong> ${fmtData(data_entrega)}`,
-          `🕐 <strong>Horário:</strong> ${horario_inicio} — ${horario_fim}`,
-          `📦 <strong>Mercadoria:</strong> ${tipo_mercadoria} (${volume})`,
+          `🕐 <strong>Horário:</strong> ${escapeHtmlEmail(horario_inicio)} — ${escapeHtmlEmail(horario_fim)}`,
+          `📦 <strong>Mercadoria:</strong> ${escapeHtmlEmail(tipo_mercadoria)} (${escapeHtmlEmail(volume)})`,
           `Acesse o painel para aprovar ou recusar.`
         ])
       );
@@ -346,16 +379,16 @@ app.post('/api/agendamentos', async (req, res) => {
       emailFornecedor(fornecedor_id,
         `[AgendaMercado] Agendamento confirmado — ${fmtData(data_entrega)}`,
         templateEmail('Seu agendamento foi confirmado ✅', [
-          `Um agendamento foi criado para <strong>${nomeEmpresa}</strong>.`,
+          `Um agendamento foi criado para <strong>${escapeHtmlEmail(nomeEmpresa)}</strong>.`,
           `📅 <strong>Data:</strong> ${fmtData(data_entrega)}`,
-          `🕐 <strong>Horário:</strong> ${horario_inicio} — ${horario_fim}`,
-          `📦 <strong>Mercadoria:</strong> ${tipo_mercadoria} (${volume})`
+          `🕐 <strong>Horário:</strong> ${escapeHtmlEmail(horario_inicio)} — ${escapeHtmlEmail(horario_fim)}`,
+          `📦 <strong>Mercadoria:</strong> ${escapeHtmlEmail(tipo_mercadoria)} (${escapeHtmlEmail(volume)})`
         ])
       );
     }
   } catch (err) {
     console.error('❌ Erro ao criar:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -396,15 +429,15 @@ app.put('/api/agendamentos/:id/aprovar', async (req, res) => {
       templateEmail('Seu agendamento foi aprovado! ✅', [
         `Boas notícias! Seu agendamento foi <strong>aprovado</strong>.`,
         `📅 <strong>Data:</strong> ${fmtData(ag.data_entrega)}`,
-        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
-        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`
+        `🕐 <strong>Horário:</strong> ${escapeHtmlEmail(ag.horario_inicio)} — ${escapeHtmlEmail(ag.horario_fim)}`,
+        `📦 <strong>Mercadoria:</strong> ${escapeHtmlEmail(ag.tipo_mercadoria)} (${escapeHtmlEmail(ag.volume)})`
       ])
     );
     whatsAppFornecedor(ag.fornecedor_id,
       `✅ *AgendaMercado*\n\nSeu agendamento para *${fmtData(ag.data_entrega)}* às *${ag.horario_inicio}* foi confirmado!`
     );
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -432,13 +465,13 @@ app.put('/api/agendamentos/:id/recusar', async (req, res) => {
       templateEmail('Agendamento recusado ❌', [
         `Infelizmente seu agendamento foi <strong>recusado</strong>.`,
         `📅 <strong>Data solicitada:</strong> ${fmtData(ag.data_entrega)}`,
-        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
-        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
-        motivo ? `💬 <strong>Motivo:</strong> ${motivo}` : `Você pode propor um novo horário acessando o sistema.`
+        `🕐 <strong>Horário:</strong> ${escapeHtmlEmail(ag.horario_inicio)} — ${escapeHtmlEmail(ag.horario_fim)}`,
+        `📦 <strong>Mercadoria:</strong> ${escapeHtmlEmail(ag.tipo_mercadoria)} (${escapeHtmlEmail(ag.volume)})`,
+        motivo ? `💬 <strong>Motivo:</strong> ${escapeHtmlEmail(motivo)}` : `Você pode propor um novo horário acessando o sistema.`
       ])
     );
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -482,12 +515,12 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
 
     const nomeEmpresa2 = (await pool.query('SELECT nome_empresa FROM fornecedores WHERE id=$1', [ag.fornecedor_id])).rows[0]?.nome_empresa || 'Fornecedor';
     emailAdmin(
-      `[AgendaMercado] Agendamento reagendado — ${nomeEmpresa2}`,
+      `[AgendaMercado] Agendamento reagendado — ${escapeHtmlEmail(nomeEmpresa2)}`,
       templateEmail('Agendamento reagendado ⚡', [
-        `<strong>${nomeEmpresa2}</strong> propôs um novo horário.`,
+        `<strong>${escapeHtmlEmail(nomeEmpresa2)}</strong> propôs um novo horário.`,
         `📅 <strong>Nova data:</strong> ${fmtData(ag.data_entrega)}`,
-        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
-        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
+        `🕐 <strong>Horário:</strong> ${escapeHtmlEmail(ag.horario_inicio)} — ${escapeHtmlEmail(ag.horario_fim)}`,
+        `📦 <strong>Mercadoria:</strong> ${escapeHtmlEmail(ag.tipo_mercadoria)} (${escapeHtmlEmail(ag.volume)})`,
         `Acesse o painel para aprovar ou recusar.`
       ])
     );
@@ -496,8 +529,8 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
       templateEmail('Reagendamento enviado ⚡', [
         `Seu pedido de reagendamento foi enviado com sucesso.`,
         `📅 <strong>Nova data:</strong> ${fmtData(ag.data_entrega)}`,
-        `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
-        `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
+        `🕐 <strong>Horário:</strong> ${escapeHtmlEmail(ag.horario_inicio)} — ${escapeHtmlEmail(ag.horario_fim)}`,
+        `📦 <strong>Mercadoria:</strong> ${escapeHtmlEmail(ag.tipo_mercadoria)} (${escapeHtmlEmail(ag.volume)})`,
         `Aguardando aprovação do recebedor.`
       ])
     );
@@ -505,7 +538,7 @@ app.put('/api/agendamentos/:id/reagendar', async (req, res) => {
       `⚡ *AgendaMercado*\n\nSeu agendamento foi reagendado para *${fmtData(ag.data_entrega)}* às *${ag.horario_inicio}*. Aguardando confirmação.`
     );
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -533,14 +566,14 @@ app.delete('/api/agendamentos/:id', async (req, res) => {
         templateEmail('Agendamento cancelado', [
           `Seu agendamento foi <strong>cancelado</strong>.`,
           `📅 <strong>Data:</strong> ${fmtData(ag.data_entrega)}`,
-          `🕐 <strong>Horário:</strong> ${ag.horario_inicio} — ${ag.horario_fim}`,
-          `📦 <strong>Mercadoria:</strong> ${ag.tipo_mercadoria} (${ag.volume})`,
+          `🕐 <strong>Horário:</strong> ${escapeHtmlEmail(ag.horario_inicio)} — ${escapeHtmlEmail(ag.horario_fim)}`,
+          `📦 <strong>Mercadoria:</strong> ${escapeHtmlEmail(ag.tipo_mercadoria)} (${escapeHtmlEmail(ag.volume)})`,
           `Entre em contato ou crie um novo agendamento pelo sistema.`
         ])
       );
     }
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -550,10 +583,10 @@ app.delete('/api/agendamentos/:id', async (req, res) => {
 
 app.get('/api/fornecedores', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM fornecedores ORDER BY nome_empresa');
+    const result = await pool.query('SELECT id, nome_empresa, nome_contato, telefone FROM fornecedores ORDER BY nome_empresa');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -589,7 +622,7 @@ app.post('/api/auth/fornecedor/login', async (req, res) => {
     res.json({ mensagem: 'OK', fornecedor: { ...resultFornecedor.rows[0], email: conta.email } });
   } catch (err) {
     console.error('❌ Erro login fornecedor:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -636,7 +669,7 @@ app.post('/api/auth/fornecedor/cadastro', async (req, res) => {
     }
   } catch (err) {
     console.error('❌ Erro cadastro:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -664,7 +697,7 @@ app.post('/api/auth/admin/login', async (req, res) => {
     res.json({ mensagem: 'OK', admin: usuario });
   } catch (err) {
     console.error('❌ Erro login admin:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -700,7 +733,7 @@ app.put('/api/auth/fornecedor/alterar-senha', async (req, res) => {
     res.json({ mensagem: 'Senha alterada com sucesso' });
   } catch (err) {
     console.error('❌ Erro ao alterar senha fornecedor:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -736,7 +769,7 @@ app.put('/api/auth/admin/alterar-senha', async (req, res) => {
     res.json({ mensagem: 'Senha alterada com sucesso' });
   } catch (err) {
     console.error('❌ Erro ao alterar senha admin:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -781,7 +814,7 @@ app.put('/api/auth/fornecedor/perfil', async (req, res) => {
     }
   } catch (err) {
     console.error('❌ Erro ao atualizar perfil fornecedor:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -808,7 +841,7 @@ app.put('/api/auth/admin/perfil', async (req, res) => {
     res.json({ mensagem: 'Perfil atualizado', admin: result.rows[0] });
   } catch (err) {
     console.error('❌ Erro ao atualizar perfil admin:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
@@ -843,7 +876,7 @@ app.get('/api/relatorios', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Erro relatórios:', err);
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 

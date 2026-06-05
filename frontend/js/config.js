@@ -87,6 +87,19 @@ function ehFimDeSemana(dataStr) {
 }
 
 // ===========================
+// HTML ESCAPING (XSS prevention)
+// ===========================
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ===========================
 // VERIFICAÇÃO DE LOGIN
 // ===========================
 function verificarLoginFornecedor() {

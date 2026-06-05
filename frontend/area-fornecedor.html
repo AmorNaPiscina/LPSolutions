@@ -298,13 +298,13 @@
         <div class="ag-card ag-card-${ag.status.toLowerCase()}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
             <div>
-              <div class="ag-title">${ag.tipo_mercadoria}</div>
-              <div class="ag-row">${formatarData(ag.data_entrega)} &nbsp;·&nbsp; ${ag.horario_inicio} — ${ag.horario_fim}</div>
-              <div class="ag-row"><strong>Volume:</strong> ${ag.volume}</div>
-              ${ag.observacoes ? `<div class="ag-row" style="margin-top:4px;font-size:12px;color:var(--faint);">${ag.observacoes}</div>` : ''}
-              ${ag.status === 'Recusado' && ag.motivo_recusa ? `<div class="ag-row" style="margin-top:8px;padding:8px 10px;background:var(--danger-bg);border-radius:6px;border:1px solid rgba(244,63,94,0.2);font-size:12px;color:var(--danger);"><strong>Motivo da recusa:</strong> ${ag.motivo_recusa}</div>` : ''}
+              <div class="ag-title">${escapeHtml(ag.tipo_mercadoria)}</div>
+              <div class="ag-row">${formatarData(ag.data_entrega)} &nbsp;·&nbsp; ${escapeHtml(ag.horario_inicio)} — ${escapeHtml(ag.horario_fim)}</div>
+              <div class="ag-row"><strong>Volume:</strong> ${escapeHtml(ag.volume)}</div>
+              ${ag.observacoes ? `<div class="ag-row" style="margin-top:4px;font-size:12px;color:var(--faint);">${escapeHtml(ag.observacoes)}</div>` : ''}
+              ${ag.status === 'Recusado' && ag.motivo_recusa ? `<div class="ag-row" style="margin-top:8px;padding:8px 10px;background:var(--danger-bg);border-radius:6px;border:1px solid rgba(244,63,94,0.2);font-size:12px;color:var(--danger);"><strong>Motivo da recusa:</strong> ${escapeHtml(ag.motivo_recusa)}</div>` : ''}
             </div>
-            <span class="status-badge badge-${ag.status.toLowerCase()}">${ag.status}</span>
+            <span class="status-badge badge-${ag.status.toLowerCase()}">${escapeHtml(ag.status)}</span>
           </div>
           ${botoes ? `<div class="ag-actions">${botoes}</div>` : ''}
           ${reagendarForm}
